@@ -115,10 +115,7 @@ function ChatPage() {
                 store.setMentor(m);
               }}
             />
-            <div className="flex items-center gap-1">
-              <ThemeToggle />
-              <SettingsMenu email={email} />
-            </div>
+            <SettingsMenu email={email} />
           </div>
         </div>
       </header>
