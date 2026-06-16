@@ -41,23 +41,12 @@
   --grad-5: #72b8f5; /* blue */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0b0b0d;
-    --surface: #161619;
-    --surface-hover: #1f1f23;
-    --foreground: rgba(245, 245, 247, 0.92);
-    --emphasis: #f0f0f2;
-    --muted: #161619;
-    --muted-foreground: rgba(245, 245, 247, 0.45);
-    --border: rgba(245, 245, 247, 0.10);
-    --ink-92: rgba(245, 245, 247, 0.92);
-    --ink-62: rgba(245, 245, 247, 0.62);
-    --ink-45: rgba(245, 245, 247, 0.45);
-    --ink-30: rgba(245, 245, 247, 0.30);
-    --ink-16: rgba(245, 245, 247, 0.16);
-  }
-}
+/* Dark mode driven exclusively by the .dark class on <html>
+   (set by the FOUC-prevention script in __root.tsx, which reads
+   prefers-color-scheme on first paint). Do NOT add a
+   prefers-color-scheme media block here — it would override the
+   user's explicit Light selection on a dark-OS machine. */
+
 
 .dark {
   --background: #0b0b0d;
