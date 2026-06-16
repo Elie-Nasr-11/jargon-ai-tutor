@@ -234,7 +234,8 @@ export function Composer({
                     language={lang}
                     value={code}
                     onChange={(v) => setCode(v ?? "")}
-                    theme="vs"
+                    theme={resolved === "dark" ? JARGON_DARK_THEME : JARGON_LIGHT_THEME}
+                    onMount={handleMonacoMount}
                     options={{
                       minimap: { enabled: false },
                       fontSize: 13,
