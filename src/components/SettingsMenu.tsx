@@ -16,7 +16,7 @@ export function SettingsMenu({ email }: { email: string }) {
 
   const open = () => {
     setMounted(true);
-    requestAnimationFrame(() => setVisible(true));
+    setVisible(true);
   };
   const close = () => setVisible(false);
 
@@ -29,15 +29,17 @@ export function SettingsMenu({ email }: { email: string }) {
   }, []);
 
   useEffect(() => {
-    if (!mounted || !panelRef.current) return;
+    if (!mounted) return;
+    const el = panelRef.current;
+    if (!el) return;
     if (visible) {
       gsap.fromTo(
-        panelRef.current,
+        el,
         { y: -8, opacity: 0, scale: 0.98 },
         { y: 0, opacity: 1, scale: 1, duration: 0.26, ease: "power3.out" },
       );
     } else {
-      gsap.to(panelRef.current, {
+      gsap.to(el, {
         y: -8,
         opacity: 0,
         scale: 0.98,
