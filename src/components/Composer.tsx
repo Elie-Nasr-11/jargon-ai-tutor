@@ -280,19 +280,15 @@ export function Composer({
                 role="separator"
                 aria-orientation="horizontal"
                 aria-label="Resize editor"
-                title="Drag to resize · double-click to auto-fit"
+                title="Drag to resize"
                 onPointerDown={onHandlePointerDown}
-                onPointerMove={onHandlePointerMove}
-                onPointerUp={onHandlePointerUp}
-                onPointerCancel={onHandlePointerUp}
-                onDoubleClick={onHandleDoubleClick}
                 className="group mb-1 flex h-2.5 cursor-ns-resize items-center justify-center touch-none select-none"
               >
                 <div className="h-[3px] w-10 rounded-full bg-border transition-colors group-hover:bg-muted-foreground/60" />
               </div>
               <div
                 className="overflow-hidden rounded-lg border border-border bg-muted/40"
-                style={{ height: editorHeight, transition: dragStartRef.current ? "none" : "height 140ms ease-out" }}
+                style={{ height: editorHeight, transition: dragging ? "none" : "height 140ms ease-out" }}
               >
                 <Suspense
                   fallback={
