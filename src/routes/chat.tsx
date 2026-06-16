@@ -130,7 +130,6 @@ function ChatPage() {
 
       <div
         className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-5 pb-6 pt-6"
-        style={{ background: "linear-gradient(to top, var(--background) 60%, transparent)" }}
       >
         <div className="pointer-events-auto w-full max-w-[760px]">
           <Composer onSendText={sendUser} onSendCodeResult={sendCodeResult} sending={sending} />
