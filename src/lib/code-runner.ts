@@ -54,9 +54,8 @@ async function loadPyodide(): Promise<any> {
   pyodidePromise = new Promise((resolve, reject) => {
     const existing = document.querySelector<HTMLScriptElement>("script[data-pyodide]");
     const init = () => {
-      // @ts-expect-error global
-      window
-        .loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/" })
+      const w = window as unknown as { loadPyodide: (o: { indexURL: string }) => Promise<unknown> };
+      w.loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/" })
         .then(resolve)
         .catch(reject);
     };
