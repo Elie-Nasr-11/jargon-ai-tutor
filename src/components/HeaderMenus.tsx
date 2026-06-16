@@ -280,11 +280,9 @@ function ProgressPanel({ activeId }: { activeId: string }) {
             <span className="flex-1 truncate text-[13px] text-foreground">{l.title}</span>
             <span className="h-[3px] w-20 overflow-hidden rounded-full bg-muted">
               <span
-                className="block h-full"
+                className="block h-full bg-foreground"
                 style={{
                   width: `${Math.round(l.progress * 100)}%`,
-                  background:
-                    "linear-gradient(90deg, var(--grad-1), var(--grad-3), var(--grad-5))",
                 }}
               />
             </span>
