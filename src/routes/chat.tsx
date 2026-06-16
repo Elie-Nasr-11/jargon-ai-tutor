@@ -151,7 +151,7 @@ function ChatPage() {
         <div
           ref={scrollRef}
           className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto"
-          style={{ paddingBottom: composerHeight + 24 }}
+          style={{ paddingBottom: composerHeight + 16 }}
         >
           {msgs.map((m) => (
             <MessageRow key={m.id} msg={m} />
