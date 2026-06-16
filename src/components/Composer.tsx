@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import gsap from "gsap";
 import { Code2, Send, Play, X } from "lucide-react";
 import { GradientCard } from "./GradientCard";
@@ -183,7 +183,7 @@ export function Composer({
     };
   }, [dragging, maxEditorH]);
 
-  const onHandlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onHandlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     dragStartRef.current = { y: e.clientY, h: editorHeight };
     setDragging(true);
