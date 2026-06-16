@@ -3,7 +3,13 @@ import { Sun, Moon } from "lucide-react";
 import gsap from "gsap";
 import { useTheme } from "@/lib/theme";
 
-export function ThemeToggle({ className = "" }: { className?: string }) {
+export function ThemeToggle({
+  className = "",
+  floating = false,
+}: {
+  className?: string;
+  floating?: boolean;
+}) {
   const { resolved, toggle } = useTheme();
   const iconRef = useRef<HTMLSpanElement>(null);
 
@@ -19,6 +25,26 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
   };
 
   const isDark = resolved === "dark";
+
+  if (floating) {
+    return (
+      <button
+        onClick={onClick}
+        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        className={`fixed bottom-5 left-5 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground shadow-[0_6px_24px_rgba(0,0,0,0.06)] backdrop-blur-md transition-colors hover:text-foreground ${className}`}
+        style={{ background: "color-mix(in oklab, var(--surface) 80%, transparent)" }}
+      >
+        <span ref={iconRef} className="inline-flex">
+          {isDark ? (
+            <Sun className="h-[18px] w-[18px]" strokeWidth={1.5} />
+          ) : (
+            <Moon className="h-[18px] w-[18px]" strokeWidth={1.5} />
+          )}
+        </span>
+      </button>
+    );
+  }
+
   return (
     <button
       onClick={onClick}
