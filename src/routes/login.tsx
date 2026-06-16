@@ -110,7 +110,7 @@ function LoginPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
+                    placeholder="jargon123"
                     className="w-full border-b border-border bg-transparent py-2 pr-9 text-[15px] outline-none placeholder:text-muted-foreground/60 focus:border-foreground transition-colors"
                   />
                   <button
