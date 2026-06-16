@@ -96,10 +96,10 @@ function ChatPage() {
   if (!email) return null;
 
   return (
-    <div className="relative flex min-h-screen flex-col" style={{ background: "var(--background)" }}>
+    <div className="relative flex h-screen min-h-0 flex-col overflow-hidden" style={{ background: "var(--background)" }}>
       <AmbientCanvas intensity={0.35} />
 
-      <header className="sticky top-0 z-20 backdrop-blur-md" style={{ background: "color-mix(in oklab, var(--background) 72%, transparent)" }}>
+      <header className="z-20 shrink-0 backdrop-blur-md" style={{ background: "color-mix(in oklab, var(--background) 72%, transparent)" }}>
         <div className="hairline">
           <div className="mx-auto flex h-[60px] max-w-[1200px] items-center justify-between px-6">
             <div className="font-serif text-[22px] tracking-tight">Jargon</div>
@@ -120,13 +120,13 @@ function ChatPage() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto flex w-full max-w-[760px] flex-1 flex-col px-5 pb-6 pt-10">
-        <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto pb-6">
+      <main className="relative z-10 mx-auto flex w-full min-h-0 max-w-[760px] flex-1 flex-col px-5 pb-6 pt-10">
+        <div ref={scrollRef} className="min-h-0 flex-1 space-y-5 overflow-y-auto pb-6">
           {msgs.map((m) => (
             <MessageRow key={m.id} msg={m} />
           ))}
         </div>
-        <div className="pt-2">
+        <div className="shrink-0 pt-2">
           <Composer onSendText={sendUser} onSendCodeResult={sendCodeResult} sending={sending} />
         </div>
       </main>
