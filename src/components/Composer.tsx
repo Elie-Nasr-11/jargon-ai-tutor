@@ -42,6 +42,30 @@ export function Composer({
   const codePanelRef = useRef<HTMLDivElement>(null);
   const { resolved } = useTheme();
   const monacoRef = useRef<typeof import("monaco-editor") | null>(null);
+  const editorInstanceRef = useRef<unknown>(null);
+
+  const MIN_EDITOR_H = 140;
+  const [editorHeight, setEditorHeight] = useState<number>(220);
+  const [userHeight, setUserHeight] = useState<number | null>(null);
+  const [vh, setVh] = useState<number>(() =>
+    typeof window === "undefined" ? 800 : window.innerHeight,
+  );
+  const CHROME_OFFSET = 180; // toolbar + paddings + composer chrome reserve
+  const maxEditorH = Math.max(MIN_EDITOR_H, Math.floor(vh * 0.65) - CHROME_OFFSET);
+
+  useEffect(() => {
+    const onResize = () => setVh(window.innerHeight);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Re-clamp when viewport or user override changes
+  useEffect(() => {
+    setEditorHeight((h) => {
+      const target = userHeight ?? h;
+      return Math.max(MIN_EDITOR_H, Math.min(target, maxEditorH));
+    });
+  }, [maxEditorH, userHeight]);
 
   const toHex = (input: string, fallback: string) => {
     try {
