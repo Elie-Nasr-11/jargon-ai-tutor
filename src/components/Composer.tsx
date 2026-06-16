@@ -168,7 +168,27 @@ export function Composer({
       { opacity: 0, y: 6 },
       { opacity: 1, y: 0, duration: 0.3, ease: "power2.out", delay: 0.06 },
     );
-  }, [mode, lang]);
+  }, [mode]);
+
+  // Drag handle for manual resize
+  const dragStartRef = useRef<{ y: number; h: number } | null>(null);
+  const onHandlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragStartRef.current = { y: e.clientY, h: editorHeight };
+  };
+  const onHandlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStartRef.current) return;
+    const delta = dragStartRef.current.y - e.clientY; // drag up grows
+    const next = Math.max(MIN_EDITOR_H, Math.min(dragStartRef.current.h + delta, maxEditorH));
+    setUserHeight(next);
+    setEditorHeight(next);
+  };
+  const onHandlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    dragStartRef.current = null;
+    try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
+  };
+  const onHandleDoubleClick = () => setUserHeight(null);
 
   const send = () => {
     const t = text.trim();
