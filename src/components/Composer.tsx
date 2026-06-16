@@ -122,9 +122,20 @@ export function Composer({
     monaco.editor.setTheme(isDark ? JARGON_DARK_THEME : JARGON_LIGHT_THEME);
   };
 
-  const handleMonacoMount = (_editor: unknown, monaco: typeof import("monaco-editor")) => {
+  const handleMonacoMount = (
+    editor: { onDidContentSizeChange: (cb: () => void) => void; getContentHeight: () => number },
+    monaco: typeof import("monaco-editor"),
+  ) => {
     monacoRef.current = monaco;
+    editorInstanceRef.current = editor;
     applyMonacoTheme(monaco);
+    const sync = () => {
+      const ch = editor.getContentHeight();
+      if (userHeight != null) return; // user override wins
+      setEditorHeight(Math.max(MIN_EDITOR_H, Math.min(ch + 16, maxEditorH)));
+    };
+    editor.onDidContentSizeChange(sync);
+    sync();
   };
 
   useEffect(() => {
