@@ -3,7 +3,13 @@ import gsap from "gsap";
 import { GradientCard } from "./GradientCard";
 import { LESSONS, type MentorConfig } from "@/lib/jargon-store";
 
-type MenuKey = "lessons" | "progress" | "mentor" | null;
+type MenuKey = "lessons" | "progress" | "mentor";
+
+const WIDTHS: Record<MenuKey, number> = {
+  lessons: 360,
+  progress: 360,
+  mentor: 380,
+};
 
 export function HeaderMenus({
   activeLessonId,
@@ -16,92 +22,151 @@ export function HeaderMenus({
   mentor: MentorConfig;
   onMentorChange: (m: MentorConfig) => void;
 }) {
-  const [mountedKey, setMountedKey] = useState<MenuKey>(null);
-  const [visibleKey, setVisibleKey] = useState<MenuKey>(null);
+  const [activeKey, setActiveKey] = useState<MenuKey | null>(null);
+  const [contentKey, setContentKey] = useState<MenuKey | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const sizerRef = useRef<HTMLDivElement>(null);
+  const isOpenRef = useRef(false);
 
-  const enter = (k: Exclude<MenuKey, null>) => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    if (mountedKey && mountedKey !== k) {
-      // exit current first, then mount next
-      setVisibleKey(null);
-      setTimeout(() => {
-        setMountedKey(k);
-        requestAnimationFrame(() => setVisibleKey(k));
-      }, 160);
-    } else {
-      setMountedKey(k);
-      requestAnimationFrame(() => setVisibleKey(k));
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
     }
+  };
+
+  const enter = (k: MenuKey) => {
+    cancelClose();
+    setActiveKey(k);
   };
   const leave = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setVisibleKey(null), 140);
+    cancelClose();
+    closeTimer.current = setTimeout(() => setActiveKey(null), 110);
   };
 
+  // open/close
   useEffect(() => {
-    if (!mountedKey || !panelRef.current) return;
-    if (visibleKey) {
-      gsap.fromTo(
-        panelRef.current,
-        { y: -8, opacity: 0, scale: 0.985 },
-        { y: 0, opacity: 1, scale: 1, duration: 0.28, ease: "power3.out" },
-      );
-    } else {
-      gsap.to(panelRef.current, {
-        y: -6,
+    const panel = panelRef.current;
+    if (!panel) return;
+    if (activeKey) {
+      if (!contentKey) setContentKey(activeKey);
+      if (!isOpenRef.current) {
+        isOpenRef.current = true;
+        gsap.killTweensOf(panel);
+        gsap.fromTo(
+          panel,
+          { y: -6, opacity: 0, scale: 0.985 },
+          { y: 0, opacity: 1, scale: 1, duration: 0.24, ease: "power3.out" },
+        );
+      }
+    } else if (isOpenRef.current) {
+      isOpenRef.current = false;
+      gsap.killTweensOf(panel);
+      gsap.to(panel, {
+        y: -4,
         opacity: 0,
         scale: 0.985,
-        duration: 0.18,
+        duration: 0.16,
         ease: "power2.in",
-        onComplete: () => setMountedKey(null),
       });
     }
-  }, [visibleKey, mountedKey]);
+  }, [activeKey, contentKey]);
 
-  const items: { key: Exclude<MenuKey, null>; label: string }[] = [
+  // crossfade + size morph when active changes
+  useLayoutEffect(() => {
+    if (!activeKey || !panelRef.current || !innerRef.current) return;
+    if (activeKey === contentKey) {
+      // initial size set
+      const targetW = WIDTHS[activeKey];
+      const h = sizerRef.current?.offsetHeight ?? innerRef.current.offsetHeight;
+      gsap.set(panelRef.current, { width: targetW, height: h });
+      return;
+    }
+    // morph to new content
+    const targetW = WIDTHS[activeKey];
+    const inner = innerRef.current;
+    gsap.killTweensOf(inner);
+    gsap.to(inner, {
+      opacity: 0,
+      y: 4,
+      duration: 0.12,
+      ease: "power2.in",
+      onComplete: () => {
+        setContentKey(activeKey);
+        requestAnimationFrame(() => {
+          const h = sizerRef.current?.offsetHeight ?? inner.offsetHeight;
+          gsap.to(panelRef.current, {
+            width: targetW,
+            height: h,
+            duration: 0.32,
+            ease: "power3.out",
+          });
+          gsap.fromTo(
+            inner,
+            { opacity: 0, y: 4 },
+            { opacity: 1, y: 0, duration: 0.22, ease: "power2.out", delay: 0.04 },
+          );
+        });
+      },
+    });
+  }, [activeKey, contentKey]);
+
+  const items: { key: MenuKey; label: string }[] = [
     { key: "lessons", label: "Lessons" },
     { key: "progress", label: "Progress" },
     { key: "mentor", label: "Mentor" },
   ];
 
-  const width = mountedKey === "mentor" ? 380 : 360;
-
   return (
-    <nav className="relative flex items-center gap-1" onMouseLeave={leave}>
+    <nav
+      ref={wrapRef}
+      className="relative flex items-center gap-1"
+      onMouseLeave={leave}
+      onMouseEnter={cancelClose}
+    >
       {items.map((it) => (
         <button
           key={it.key}
           onMouseEnter={() => enter(it.key)}
           onFocus={() => enter(it.key)}
           className={`relative rounded-full px-3.5 py-1.5 text-[13.5px] tracking-tight transition-colors ${
-            visibleKey === it.key ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            activeKey === it.key ? "text-foreground" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           {it.label}
         </button>
       ))}
 
-      {mountedKey && (
-        <div
-          ref={panelRef}
-          onMouseEnter={() => enter(mountedKey)}
-          onMouseLeave={leave}
-          className="absolute left-1/2 top-[calc(100%+10px)] -translate-x-1/2"
-          style={{ width }}
-        >
-          <GradientCard>
-            <div className="p-5">
-              {mountedKey === "lessons" && (
+      <div
+        ref={panelRef}
+        onMouseEnter={cancelClose}
+        onMouseLeave={leave}
+        className="pointer-events-auto absolute left-1/2 top-[calc(100%+10px)] -translate-x-1/2 overflow-hidden"
+        style={{
+          width: contentKey ? WIDTHS[contentKey] : 360,
+          opacity: 0,
+          willChange: "transform, opacity, width, height",
+          transform: "translateZ(0)",
+          display: contentKey ? "block" : "none",
+        }}
+      >
+        <GradientCard>
+          <div ref={innerRef} style={{ willChange: "transform, opacity" }}>
+            <div ref={sizerRef} className="p-5">
+              {contentKey === "lessons" && (
                 <LessonsPanel activeId={activeLessonId} onSelect={onSelectLesson} />
               )}
-              {mountedKey === "progress" && <ProgressPanel activeId={activeLessonId} />}
-              {mountedKey === "mentor" && <MentorPanel mentor={mentor} onChange={onMentorChange} />}
+              {contentKey === "progress" && <ProgressPanel activeId={activeLessonId} />}
+              {contentKey === "mentor" && (
+                <MentorPanel mentor={mentor} onChange={onMentorChange} />
+              )}
             </div>
-          </GradientCard>
-        </div>
-      )}
+          </div>
+        </GradientCard>
+      </div>
     </nav>
   );
 }
@@ -115,20 +180,25 @@ function LessonsPanel({
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLDivElement>(null);
+  const didMount = useRef(false);
 
   useLayoutEffect(() => {
     const list = listRef.current;
     const ind = indicatorRef.current;
     if (!list || !ind) return;
     const idx = LESSONS.findIndex((l) => l.id === activeId);
-    const row = list.children[idx] as HTMLElement | undefined;
+    const row = list.children[idx + 1] as HTMLElement | undefined; // +1 because indicator is first child
     if (!row) return;
-    gsap.to(ind, {
+    const props = {
       y: row.offsetTop + 6,
       height: row.offsetHeight - 12,
-      duration: 0.42,
-      ease: "power3.out",
-    });
+    };
+    if (!didMount.current) {
+      gsap.set(ind, props);
+      didMount.current = true;
+    } else {
+      gsap.to(ind, { ...props, duration: 0.38, ease: "power3.out" });
+    }
   }, [activeId]);
 
   return (
@@ -144,6 +214,7 @@ function LessonsPanel({
             background:
               "linear-gradient(180deg, var(--grad-1), var(--grad-2), var(--grad-3), var(--grad-4), var(--grad-5))",
             height: 24,
+            willChange: "transform, height",
           }}
         />
         {LESSONS.map((l) => {
@@ -273,6 +344,7 @@ function MentorGroup({
   const rowRef = useRef<HTMLDivElement>(null);
   const pillRef = useRef<HTMLDivElement>(null);
   const btnRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const didMount = useRef(false);
 
   useLayoutEffect(() => {
     const row = rowRef.current;
@@ -281,12 +353,13 @@ function MentorGroup({
     const idx = options.indexOf(value);
     const btn = btnRefs.current[idx];
     if (!btn) return;
-    gsap.to(pill, {
-      x: btn.offsetLeft,
-      width: btn.offsetWidth,
-      duration: 0.38,
-      ease: "power3.out",
-    });
+    const props = { x: btn.offsetLeft, width: btn.offsetWidth };
+    if (!didMount.current) {
+      gsap.set(pill, props);
+      didMount.current = true;
+    } else {
+      gsap.to(pill, { ...props, duration: 0.34, ease: "power3.out" });
+    }
   }, [value, options]);
 
   return (
@@ -302,7 +375,7 @@ function MentorGroup({
           ref={pillRef}
           aria-hidden
           className="absolute left-0 top-[3px] h-[calc(100%-6px)] rounded-full bg-foreground"
-          style={{ width: 0 }}
+          style={{ width: 0, willChange: "transform, width" }}
         />
         {options.map((opt, i) => {
           const active = value === opt;
@@ -325,3 +398,6 @@ function MentorGroup({
     </div>
   );
 }
+
+// Silence unused-import warning for ReactNode in some configs
+export type _R = ReactNode;
