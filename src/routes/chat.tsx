@@ -4,6 +4,7 @@ import gsap from "gsap";
 import { AmbientCanvas } from "@/components/AmbientCanvas";
 import { HeaderMenus } from "@/components/HeaderMenus";
 import { SettingsMenu } from "@/components/SettingsMenu";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Composer } from "@/components/Composer";
 import { GradientCard } from "@/components/GradientCard";
 import { store, DEFAULT_MENTOR, type MentorConfig, LESSONS } from "@/lib/jargon-store";
@@ -115,7 +116,10 @@ function ChatPage() {
                 store.setMentor(m);
               }}
             />
-            <SettingsMenu email={email} />
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+              <SettingsMenu email={email} />
+            </div>
           </div>
         </div>
       </header>

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import gsap from "gsap";
-import { Settings, LogOut } from "lucide-react";
+import { Settings, LogOut, Sun, Moon } from "lucide-react";
 import { GradientCard } from "./GradientCard";
 import { store } from "@/lib/jargon-store";
+import { useTheme } from "@/lib/theme";
 
 export function SettingsMenu({ email }: { email: string }) {
   const [mounted, setMounted] = useState(false);
@@ -11,6 +12,7 @@ export function SettingsMenu({ email }: { email: string }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { resolved, toggle } = useTheme();
 
   const open = () => {
     setMounted(true);
@@ -69,6 +71,22 @@ export function SettingsMenu({ email }: { email: string }) {
                 </div>
               </div>
               <div className="my-2 h-px bg-border" />
+              <button
+                onClick={toggle}
+                className="flex w-full items-center justify-between gap-2.5 rounded-md px-2 py-2 text-left text-[13px] text-foreground transition-colors hover:bg-muted"
+              >
+                <span className="flex items-center gap-2.5">
+                  {resolved === "dark" ? (
+                    <Sun className="h-[15px] w-[15px]" strokeWidth={1.5} />
+                  ) : (
+                    <Moon className="h-[15px] w-[15px]" strokeWidth={1.5} />
+                  )}
+                  Appearance
+                </span>
+                <span className="text-[11.5px] uppercase tracking-[0.08em] text-muted-foreground">
+                  {resolved === "dark" ? "Dark" : "Light"}
+                </span>
+              </button>
               <button
                 onClick={() => {
                   store.clearUser();
