@@ -1,12 +1,22 @@
-import { Suspense, lazy, useLayoutEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { Code2, Send, Play, X } from "lucide-react";
 import { GradientCard } from "./GradientCard";
 import { runJavaScript, runPython, type RunResult } from "@/lib/code-runner";
+import { useTheme } from "@/lib/theme";
 
 const MonacoEditor = lazy(() =>
   import("@monaco-editor/react").then((m) => ({ default: m.default })),
 );
+
+const JARGON_LIGHT_THEME = "jargon-light";
+const JARGON_DARK_THEME = "jargon-dark";
+
+function readVar(name: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
 
 type Mode = "text" | "code";
 type Lang = "javascript" | "python";
