@@ -42,6 +42,30 @@ export function Composer({
   const codePanelRef = useRef<HTMLDivElement>(null);
   const { resolved } = useTheme();
   const monacoRef = useRef<typeof import("monaco-editor") | null>(null);
+  const editorInstanceRef = useRef<unknown>(null);
+
+  const MIN_EDITOR_H = 140;
+  const [editorHeight, setEditorHeight] = useState<number>(220);
+  const [userHeight, setUserHeight] = useState<number | null>(null);
+  const [vh, setVh] = useState<number>(() =>
+    typeof window === "undefined" ? 800 : window.innerHeight,
+  );
+  const CHROME_OFFSET = 180; // toolbar + paddings + composer chrome reserve
+  const maxEditorH = Math.max(MIN_EDITOR_H, Math.floor(vh * 0.65) - CHROME_OFFSET);
+
+  useEffect(() => {
+    const onResize = () => setVh(window.innerHeight);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Re-clamp when viewport or user override changes
+  useEffect(() => {
+    setEditorHeight((h) => {
+      const target = userHeight ?? h;
+      return Math.max(MIN_EDITOR_H, Math.min(target, maxEditorH));
+    });
+  }, [maxEditorH, userHeight]);
 
   const toHex = (input: string, fallback: string) => {
     try {
@@ -98,9 +122,20 @@ export function Composer({
     monaco.editor.setTheme(isDark ? JARGON_DARK_THEME : JARGON_LIGHT_THEME);
   };
 
-  const handleMonacoMount = (_editor: unknown, monaco: typeof import("monaco-editor")) => {
+  const handleMonacoMount = (
+    editor: { onDidContentSizeChange: (cb: () => void) => void; getContentHeight: () => number },
+    monaco: typeof import("monaco-editor"),
+  ) => {
     monacoRef.current = monaco;
+    editorInstanceRef.current = editor;
     applyMonacoTheme(monaco);
+    const sync = () => {
+      const ch = editor.getContentHeight();
+      if (userHeight != null) return; // user override wins
+      setEditorHeight(Math.max(MIN_EDITOR_H, Math.min(ch + 16, maxEditorH)));
+    };
+    editor.onDidContentSizeChange(sync);
+    sync();
   };
 
   useEffect(() => {
@@ -133,7 +168,27 @@ export function Composer({
       { opacity: 0, y: 6 },
       { opacity: 1, y: 0, duration: 0.3, ease: "power2.out", delay: 0.06 },
     );
-  }, [mode, lang]);
+  }, [mode]);
+
+  // Drag handle for manual resize
+  const dragStartRef = useRef<{ y: number; h: number } | null>(null);
+  const onHandlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragStartRef.current = { y: e.clientY, h: editorHeight };
+  };
+  const onHandlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStartRef.current) return;
+    const delta = dragStartRef.current.y - e.clientY; // drag up grows
+    const next = Math.max(MIN_EDITOR_H, Math.min(dragStartRef.current.h + delta, maxEditorH));
+    setUserHeight(next);
+    setEditorHeight(next);
+  };
+  const onHandlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    dragStartRef.current = null;
+    try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
+  };
+  const onHandleDoubleClick = () => setUserHeight(null);
 
   const send = () => {
     const t = text.trim();
@@ -222,7 +277,24 @@ export function Composer({
                   </button>
                 </div>
               </div>
-              <div className="overflow-hidden rounded-lg border border-border bg-muted/40">
+              <div
+                role="separator"
+                aria-orientation="horizontal"
+                aria-label="Resize editor"
+                title="Drag to resize · double-click to auto-fit"
+                onPointerDown={onHandlePointerDown}
+                onPointerMove={onHandlePointerMove}
+                onPointerUp={onHandlePointerUp}
+                onPointerCancel={onHandlePointerUp}
+                onDoubleClick={onHandleDoubleClick}
+                className="group mb-1 flex h-2.5 cursor-ns-resize items-center justify-center touch-none select-none"
+              >
+                <div className="h-[3px] w-10 rounded-full bg-border transition-colors group-hover:bg-muted-foreground/60" />
+              </div>
+              <div
+                className="overflow-hidden rounded-lg border border-border bg-muted/40"
+                style={{ height: editorHeight, transition: dragStartRef.current ? "none" : "height 140ms ease-out" }}
+              >
                 <Suspense
                   fallback={
                     <div className="px-3 py-6 text-[12px] text-muted-foreground">
@@ -231,7 +303,7 @@ export function Composer({
                   }
                 >
                   <MonacoEditor
-                    height="220px"
+                    height="100%"
                     language={lang}
                     value={code}
                     onChange={(v) => setCode(v ?? "")}
@@ -247,7 +319,7 @@ export function Composer({
                       padding: { top: 12, bottom: 12 },
                       renderLineHighlight: "none",
                       overviewRulerLanes: 0,
-                      scrollbar: { vertical: "hidden", horizontal: "hidden" },
+                      scrollbar: { vertical: "auto", horizontal: "hidden" },
                     }}
                   />
                 </Suspense>
