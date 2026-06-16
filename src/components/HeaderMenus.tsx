@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import gsap from "gsap";
 import { GradientCard } from "./GradientCard";
-import { LESSONS, store, type MentorConfig } from "@/lib/jargon-store";
+import { LESSONS, type MentorConfig } from "@/lib/jargon-store";
 
 type MenuKey = "lessons" | "progress" | "mentor" | null;
 
@@ -16,23 +16,57 @@ export function HeaderMenus({
   mentor: MentorConfig;
   onMentorChange: (m: MentorConfig) => void;
 }) {
-  const [open, setOpen] = useState<MenuKey>(null);
+  const [mountedKey, setMountedKey] = useState<MenuKey>(null);
+  const [visibleKey, setVisibleKey] = useState<MenuKey>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  const enter = (k: MenuKey) => {
+  const enter = (k: Exclude<MenuKey, null>) => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
-    setOpen(k);
+    if (mountedKey && mountedKey !== k) {
+      // exit current first, then mount next
+      setVisibleKey(null);
+      setTimeout(() => {
+        setMountedKey(k);
+        requestAnimationFrame(() => setVisibleKey(k));
+      }, 160);
+    } else {
+      setMountedKey(k);
+      requestAnimationFrame(() => setVisibleKey(k));
+    }
   };
   const leave = () => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setOpen(null), 120);
+    closeTimer.current = setTimeout(() => setVisibleKey(null), 140);
   };
+
+  useEffect(() => {
+    if (!mountedKey || !panelRef.current) return;
+    if (visibleKey) {
+      gsap.fromTo(
+        panelRef.current,
+        { y: -8, opacity: 0, scale: 0.985 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.28, ease: "power3.out" },
+      );
+    } else {
+      gsap.to(panelRef.current, {
+        y: -6,
+        opacity: 0,
+        scale: 0.985,
+        duration: 0.18,
+        ease: "power2.in",
+        onComplete: () => setMountedKey(null),
+      });
+    }
+  }, [visibleKey, mountedKey]);
 
   const items: { key: Exclude<MenuKey, null>; label: string }[] = [
     { key: "lessons", label: "Lessons" },
     { key: "progress", label: "Progress" },
     { key: "mentor", label: "Mentor" },
   ];
+
+  const width = mountedKey === "mentor" ? 380 : 360;
 
   return (
     <nav className="relative flex items-center gap-1" onMouseLeave={leave}>
@@ -42,52 +76,33 @@ export function HeaderMenus({
           onMouseEnter={() => enter(it.key)}
           onFocus={() => enter(it.key)}
           className={`relative rounded-full px-3.5 py-1.5 text-[13.5px] tracking-tight transition-colors ${
-            open === it.key ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            visibleKey === it.key ? "text-foreground" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           {it.label}
         </button>
       ))}
 
-      {open && (
+      {mountedKey && (
         <div
-          onMouseEnter={() => enter(open)}
+          ref={panelRef}
+          onMouseEnter={() => enter(mountedKey)}
           onMouseLeave={leave}
           className="absolute left-1/2 top-[calc(100%+10px)] -translate-x-1/2"
-          style={{ width: open === "mentor" ? 380 : 360 }}
+          style={{ width }}
         >
-          <MenuPanel keyName={open}>
-            {open === "lessons" && (
-              <LessonsPanel activeId={activeLessonId} onSelect={onSelectLesson} />
-            )}
-            {open === "progress" && <ProgressPanel activeId={activeLessonId} />}
-            {open === "mentor" && <MentorPanel mentor={mentor} onChange={onMentorChange} />}
-          </MenuPanel>
+          <GradientCard>
+            <div className="p-5">
+              {mountedKey === "lessons" && (
+                <LessonsPanel activeId={activeLessonId} onSelect={onSelectLesson} />
+              )}
+              {mountedKey === "progress" && <ProgressPanel activeId={activeLessonId} />}
+              {mountedKey === "mentor" && <MentorPanel mentor={mentor} onChange={onMentorChange} />}
+            </div>
+          </GradientCard>
         </div>
       )}
     </nav>
-  );
-}
-
-function MenuPanel({ keyName, children }: { keyName: string; children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!ref.current) return;
-    const tl = gsap.fromTo(
-      ref.current,
-      { y: -8, opacity: 0, scale: 0.985 },
-      { y: 0, opacity: 1, scale: 1, duration: 0.24, ease: "power3.out" },
-    );
-    return () => {
-      tl.kill();
-    };
-  }, [keyName]);
-  return (
-    <div ref={ref}>
-      <GradientCard>
-        <div className="p-5">{children}</div>
-      </GradientCard>
-    </div>
   );
 }
 
@@ -98,22 +113,53 @@ function LessonsPanel({
   activeId: string;
   onSelect: (id: string) => void;
 }) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const indicatorRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const ind = indicatorRef.current;
+    if (!list || !ind) return;
+    const idx = LESSONS.findIndex((l) => l.id === activeId);
+    const row = list.children[idx] as HTMLElement | undefined;
+    if (!row) return;
+    gsap.to(ind, {
+      y: row.offsetTop + 6,
+      height: row.offsetHeight - 12,
+      duration: 0.42,
+      ease: "power3.out",
+    });
+  }, [activeId]);
+
   return (
     <div>
       <h3 className="font-serif text-[22px] leading-tight tracking-tight">Lessons</h3>
       <p className="mt-1 text-[13px] text-muted-foreground">Pick the thread to follow.</p>
-      <div className="mt-5 space-y-1">
+      <div ref={listRef} className="relative mt-5">
+        <div
+          ref={indicatorRef}
+          aria-hidden
+          className="pointer-events-none absolute left-1 top-0 w-[3px] rounded-full"
+          style={{
+            background:
+              "linear-gradient(180deg, var(--grad-1), var(--grad-2), var(--grad-3), var(--grad-4), var(--grad-5))",
+            height: 24,
+          }}
+        />
         {LESSONS.map((l) => {
           const active = l.id === activeId;
           return (
             <button
               key={l.id}
               onClick={() => onSelect(l.id)}
-              className="group flex w-full items-start gap-3 rounded-md px-1 py-2 text-left transition-colors hover:bg-muted/60"
+              className="group relative flex w-full items-start gap-3 rounded-md py-2 pl-5 pr-1 text-left transition-colors hover:bg-muted/60"
             >
-              <span className={`dot-indicator ${active ? "active" : ""}`} style={{ minHeight: 38 }} />
               <span className="flex-1">
-                <span className="block text-[14.5px] font-medium tracking-tight text-foreground">
+                <span
+                  className={`block text-[14.5px] font-medium tracking-tight transition-colors ${
+                    active ? "text-foreground" : "text-foreground/85"
+                  }`}
+                >
                   {l.title}
                 </span>
                 <span className="mt-0.5 block text-[12.5px] leading-relaxed text-muted-foreground">
@@ -149,7 +195,7 @@ function ProgressPanel({ activeId }: { activeId: string }) {
           className="h-full rounded-full"
           style={{
             background:
-              "linear-gradient(90deg, var(--grad-1), var(--grad-2), var(--grad-3), var(--grad-4))",
+              "linear-gradient(90deg, var(--grad-1), var(--grad-2), var(--grad-3), var(--grad-4), var(--grad-5))",
           }}
         />
       </div>
@@ -164,8 +210,12 @@ function ProgressPanel({ activeId }: { activeId: string }) {
             <span className="flex-1 truncate text-[13px] text-foreground">{l.title}</span>
             <span className="h-[3px] w-20 overflow-hidden rounded-full bg-muted">
               <span
-                className="block h-full bg-foreground/70"
-                style={{ width: `${Math.round(l.progress * 100)}%` }}
+                className="block h-full"
+                style={{
+                  width: `${Math.round(l.progress * 100)}%`,
+                  background:
+                    "linear-gradient(90deg, var(--grad-1), var(--grad-3), var(--grad-5))",
+                }}
               />
             </span>
             <span className="w-8 text-right text-[11.5px] tabular-nums text-muted-foreground">
@@ -196,32 +246,81 @@ function MentorPanel({
       <p className="mt-1 text-[13px] text-muted-foreground">Shape how the tutor talks back.</p>
       <div className="mt-5 space-y-4">
         {groups.map((g) => (
-          <div key={g.key}>
-            <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-              {g.label}
-            </div>
-            <div className="flex gap-1.5">
-              {g.options.map((opt) => {
-                const active = mentor[g.key] === opt;
-                return (
-                  <button
-                    key={opt}
-                    onClick={() =>
-                      onChange({ ...mentor, [g.key]: opt } as MentorConfig)
-                    }
-                    className={`flex-1 rounded-full border px-2.5 py-1.5 text-[12.5px] transition-all ${
-                      active
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <MentorGroup
+            key={g.key as string}
+            label={g.label}
+            options={g.options as string[]}
+            value={mentor[g.key] as string}
+            onSelect={(opt) => onChange({ ...mentor, [g.key]: opt } as MentorConfig)}
+          />
         ))}
+      </div>
+    </div>
+  );
+}
+
+function MentorGroup({
+  label,
+  options,
+  value,
+  onSelect,
+}: {
+  label: string;
+  options: string[];
+  value: string;
+  onSelect: (opt: string) => void;
+}) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
+  const btnRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    const pill = pillRef.current;
+    if (!row || !pill) return;
+    const idx = options.indexOf(value);
+    const btn = btnRefs.current[idx];
+    if (!btn) return;
+    gsap.to(pill, {
+      x: btn.offsetLeft,
+      width: btn.offsetWidth,
+      duration: 0.38,
+      ease: "power3.out",
+    });
+  }, [value, options]);
+
+  return (
+    <div>
+      <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </div>
+      <div
+        ref={rowRef}
+        className="relative flex gap-1.5 rounded-full border border-border p-[3px]"
+      >
+        <div
+          ref={pillRef}
+          aria-hidden
+          className="absolute left-0 top-[3px] h-[calc(100%-6px)] rounded-full bg-foreground"
+          style={{ width: 0 }}
+        />
+        {options.map((opt, i) => {
+          const active = value === opt;
+          return (
+            <button
+              key={opt}
+              ref={(el) => {
+                btnRefs.current[i] = el;
+              }}
+              onClick={() => onSelect(opt)}
+              className={`relative z-10 flex-1 rounded-full px-2.5 py-1.5 text-[12.5px] transition-colors ${
+                active ? "text-background" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {opt}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

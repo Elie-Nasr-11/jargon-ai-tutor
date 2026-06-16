@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { Code2, Send, Play, X } from "lucide-react";
 import { GradientCard } from "./GradientCard";
@@ -27,14 +27,34 @@ export function Composer({
     `// Try me. Hit Run \u25B6 to see output in the chat.\nconsole.log("hello from jargon");`,
   );
   const [running, setRunning] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const morphRef = useRef<HTMLDivElement>(null);
+  const textPanelRef = useRef<HTMLDivElement>(null);
+  const codePanelRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!wrapRef.current) return;
+  // smooth height morph between text & code panels
+  useLayoutEffect(() => {
+    const wrap = morphRef.current;
+    const target = (mode === "text" ? textPanelRef.current : codePanelRef.current);
+    if (!wrap || !target) return;
+    const fromH = wrap.offsetHeight;
+    // measure target after it renders
+    const toH = target.scrollHeight;
     gsap.fromTo(
-      wrapRef.current,
+      wrap,
+      { height: fromH },
+      {
+        height: toH,
+        duration: 0.42,
+        ease: "power3.inOut",
+        onComplete: () => {
+          wrap.style.height = "auto";
+        },
+      },
+    );
+    gsap.fromTo(
+      target,
       { opacity: 0, y: 6 },
-      { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" },
+      { opacity: 1, y: 0, duration: 0.32, ease: "power2.out", delay: 0.08 },
     );
   }, [mode]);
 
@@ -53,13 +73,13 @@ export function Composer({
   };
 
   return (
-    <div ref={wrapRef} className="w-full">
+    <div className="w-full">
       <GradientCard>
-        <div className="px-4 py-3">
+        <div ref={morphRef} className="overflow-hidden px-4 py-3">
           {mode === "text" ? (
-            <div className="flex items-end gap-2">
+            <div ref={textPanelRef} className="flex items-end gap-2">
               <button
-                aria-label="Switch to code"
+                aria-label="Open code editor"
                 onClick={() => setMode("code")}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
@@ -75,7 +95,7 @@ export function Composer({
                   }
                 }}
                 rows={1}
-                placeholder="Ask anything\u2026 try \u201Cshow me a for loop\u201D"
+                placeholder={"Ask anything\u2026 try \u201Cshow me a for loop\u201D"}
                 className="max-h-[160px] min-h-[28px] flex-1 resize-none bg-transparent py-1 text-[14.5px] leading-relaxed outline-none placeholder:text-muted-foreground/70"
               />
               <button
@@ -88,23 +108,9 @@ export function Composer({
               </button>
             </div>
           ) : (
-            <div>
+            <div ref={codePanelRef}>
               <div className="mb-2 flex items-center gap-2">
-                <div className="flex rounded-full border border-border p-[2px] text-[11.5px]">
-                  {(["javascript", "python"] as Lang[]).map((l) => (
-                    <button
-                      key={l}
-                      onClick={() => setLang(l)}
-                      className={`rounded-full px-2.5 py-[3px] transition-colors ${
-                        lang === l
-                          ? "bg-foreground text-background"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {l === "javascript" ? "JS" : "Py"}
-                    </button>
-                  ))}
-                </div>
+                <LangToggle lang={lang} onChange={setLang} />
                 <span className="text-[11.5px] text-muted-foreground">
                   {lang === "python"
                     ? running
@@ -114,7 +120,7 @@ export function Composer({
                 </span>
                 <div className="ml-auto flex items-center gap-1.5">
                   <button
-                    aria-label="Back to chat"
+                    aria-label="Close editor"
                     onClick={() => setMode("text")}
                     className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
@@ -172,6 +178,58 @@ export function Composer({
           )}
         </div>
       </GradientCard>
+    </div>
+  );
+}
+
+function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => void }) {
+  const langs: Lang[] = ["javascript", "python"];
+  const rowRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
+  const btnRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  useLayoutEffect(() => {
+    const pill = pillRef.current;
+    if (!pill) return;
+    const idx = langs.indexOf(lang);
+    const btn = btnRefs.current[idx];
+    if (!btn) return;
+    gsap.to(pill, {
+      x: btn.offsetLeft,
+      width: btn.offsetWidth,
+      duration: 0.32,
+      ease: "power3.out",
+    });
+  }, [lang]);
+
+  return (
+    <div
+      ref={rowRef}
+      className="relative flex rounded-full border border-border p-[2px] text-[11.5px]"
+    >
+      <div
+        ref={pillRef}
+        aria-hidden
+        className="absolute left-0 top-[2px] h-[calc(100%-4px)] rounded-full bg-foreground"
+        style={{ width: 0 }}
+      />
+      {langs.map((l, i) => {
+        const active = lang === l;
+        return (
+          <button
+            key={l}
+            ref={(el) => {
+              btnRefs.current[i] = el;
+            }}
+            onClick={() => onChange(l)}
+            className={`relative z-10 rounded-full px-2.5 py-[3px] transition-colors ${
+              active ? "text-background" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {l === "javascript" ? "JS" : "Py"}
+          </button>
+        );
+      })}
     </div>
   );
 }
