@@ -148,7 +148,11 @@ function ChatPage() {
       </header>
 
       <main className="relative z-10 mx-auto flex w-full min-h-0 max-w-[760px] flex-1 flex-col px-5 pt-10">
-        <div ref={scrollRef} className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto pb-[200px]">
+        <div
+          ref={scrollRef}
+          className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto"
+          style={{ paddingBottom: composerHeight + 24 }}
+        >
           {msgs.map((m) => (
             <MessageRow key={m.id} msg={m} />
           ))}
@@ -156,6 +160,7 @@ function ChatPage() {
       </main>
 
       <div
+        ref={composerWrapRef}
         className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-5 pb-6 pt-6"
       >
         <div className="pointer-events-auto w-full max-w-[760px]">
