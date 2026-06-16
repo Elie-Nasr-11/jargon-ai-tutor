@@ -156,19 +156,21 @@ export function HeaderMenus({
           display: contentKey ? "block" : "none",
         }}
       >
-        <GradientCard>
-          <div ref={innerRef} style={{ willChange: "transform, opacity" }}>
-            <div ref={sizerRef} className="p-5">
-              {contentKey === "lessons" && (
-                <LessonsPanel activeId={activeLessonId} onSelect={onSelectLesson} />
-              )}
-              {contentKey === "progress" && <ProgressPanel activeId={activeLessonId} />}
-              {contentKey === "mentor" && (
-                <MentorPanel mentor={mentor} onChange={onMentorChange} />
-              )}
+        <div ref={sizerRef}>
+          <GradientCard>
+            <div ref={innerRef} style={{ willChange: "transform, opacity" }}>
+              <div className="p-5">
+                {contentKey === "lessons" && (
+                  <LessonsPanel activeId={activeLessonId} onSelect={onSelectLesson} />
+                )}
+                {contentKey === "progress" && <ProgressPanel activeId={activeLessonId} />}
+                {contentKey === "mentor" && (
+                  <MentorPanel mentor={mentor} onChange={onMentorChange} />
+                )}
+              </div>
             </div>
-          </div>
-        </GradientCard>
+          </GradientCard>
+        </div>
       </div>
     </nav>
   );
