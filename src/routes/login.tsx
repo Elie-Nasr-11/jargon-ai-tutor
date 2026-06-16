@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
+import { Eye, EyeOff } from "lucide-react";
 import { AmbientCanvas } from "@/components/AmbientCanvas";
 import { GradientCard } from "@/components/GradientCard";
 import { store } from "@/lib/jargon-store";
@@ -20,6 +21,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -102,14 +104,29 @@ function LoginPage() {
                 <label className="text-[12px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                   Password
                 </label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
-                  className="mt-1.5 w-full border-b border-border bg-transparent py-2 text-[15px] outline-none placeholder:text-muted-foreground/60 focus:border-foreground transition-colors"
-                />
+                <div className="relative mt-1.5">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
+                    className="w-full border-b border-border bg-transparent py-2 pr-9 text-[15px] outline-none placeholder:text-muted-foreground/60 focus:border-foreground transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 p-1 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-[16px] w-[16px]" strokeWidth={1.6} />
+                    ) : (
+                      <Eye className="h-[16px] w-[16px]" strokeWidth={1.6} />
+                    )}
+                  </button>
+                </div>
               </div>
               <button
                 type="submit"
