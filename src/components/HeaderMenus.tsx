@@ -52,7 +52,10 @@ export function HeaderMenus({
     const panel = panelRef.current;
     if (!panel) return;
     if (activeKey) {
-      if (!contentKey) setContentKey(activeKey);
+      if (!contentKey) {
+        setContentKey(activeKey);
+        return; // wait for next render with contentKey set so panel is visible
+      }
       if (!isOpenRef.current) {
         isOpenRef.current = true;
         gsap.killTweensOf(panel);
