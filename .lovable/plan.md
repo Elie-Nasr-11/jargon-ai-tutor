@@ -1,45 +1,57 @@
 ## Goal
 
-When the code editor opens, the chat scroll area shrinks so the composer/code panel never overlaps message history. The code panel auto-grows with its content up to a 65vh cap, and the user can manually drag a handle to resize it (also capped at 65vh).
+Make the chatbox/codebox mechanic stable: no jitter when opening or typing, no awkward drag behavior, and no chat history hidden behind the composer unless the user intentionally scrolls upward.
 
-## Changes
+## Plan
 
-### 1. `src/components/Composer.tsx` — adaptive + draggable Monaco
+### 1. Replace the unstable auto-height editor behavior
 
-- Replace the hard-coded `height="220px"` on `MonacoEditor` with a controlled `editorHeight` state.
-- On editor mount, subscribe to Monaco's `onDidContentSizeChange` and set `editorHeight = clamp(contentHeight, MIN, autoMax)` where:
-  - `MIN = 140px`
-  - `autoMax = min(0.65 * window.innerHeight - chromeOffset, userMaxIfDragged)`
-  - `chromeOffset` ≈ toolbar + paddings + composer chrome (~140px), so the whole composer stays within 65vh.
-- Track `userHeight: number | null`. If the user drags, `userHeight` overrides auto-fit (still clamped to 65vh cap). A small "reset" affordance (double-click handle) clears `userHeight` to return to auto-fit.
-- Add a drag handle bar at the **top edge** of the code panel (just above the Monaco container): 6px tall, full width, `cursor: ns-resize`, themed via tokens. On `pointerdown` capture pointer; on move, compute delta and update `userHeight` (clamped to [MIN, 0.65 * vh - chromeOffset]).
-- Recompute the cap on `window resize` so 65vh stays accurate.
-- Keep the existing morph animation but key it only on `mode` (not `lang`), since height now changes continuously via Monaco/drag rather than a single tween. Remove the `power3.out` tween on `editorHeight` changes (CSS `transition: height 120ms ease-out` on the Monaco wrapper instead, so resize feels live).
-- When mode flips text↔code, still tween wrapper height once for the morph.
+In `src/components/Composer.tsx`:
 
-### 2. `src/routes/chat.tsx` — already reserves composer height, minor polish
+- Remove Monaco `onDidContentSizeChange` as the source of live React height updates. That event fires frequently while typing and causes re-render/resize jitter.
+- Use a simpler, stable sizing model:
+  - Text mode stays compact.
+  - Code mode opens at a fixed comfortable default height.
+  - The editor can be manually resized by dragging.
+  - Max composer height is capped at 65% of viewport height.
+- Keep Monaco itself scrollable inside the editor when content exceeds the current editor height, instead of constantly resizing the panel while typing.
 
-- The existing `ResizeObserver` on `composerWrapRef` already updates `paddingBottom = composerHeight + 24`, which is exactly the "push chat up, never cover history" behavior the user wants — when the composer grows (auto-fit or drag), the scroll content reserves the new space.
-- Add a single guard: when `composerHeight` grows, only auto-scroll if the user is within 120px of the bottom (already in place). Confirm no change needed here; only update the `paddingBottom` formula to `composerHeight + 16` for tighter spacing.
-- No layout-flow change — composer stays `fixed` at bottom so it remains pinned while scrolling history upward.
+### 2. Fix drag behavior
 
-### 3. No CSS file changes required
+In `src/components/Composer.tsx`:
 
-Tokens already cover the handle color (`border` / `muted-foreground`).
+- Store dragging state in React state/ref cleanly so transition is disabled while dragging.
+- Attach pointer move/up handlers to `window` during drag instead of relying only on the small handle receiving pointer events. This prevents the drag from dropping when the pointer leaves the handle.
+- Clamp drag results between a minimum editor height and the computed max available height.
+- Make dragging upward increase height and dragging downward decrease height.
+- Remove the auto-fit double-click behavior for now because it conflicts with predictable manual sizing.
 
-## Technical notes
+### 3. Make composer height reports reliable
 
-- `0.65 * window.innerHeight` is read from `window.innerHeight` inside a `useEffect` + `resize` listener; SSR-safe via `typeof window` check.
-- `chromeOffset` is measured from the composer wrapper: `composerWrapRef.current.offsetHeight - editorHeight` after first paint, so it stays accurate if toolbar height changes.
-- Drag implementation uses `pointerdown`/`pointermove`/`pointerup` with `setPointerCapture` on the handle; no global listeners needed.
-- Monaco's `editor.getContentHeight()` returns the natural content height; `onDidContentSizeChange` fires on every line add/remove.
+In `src/routes/chat.tsx`:
 
-## Out of scope
+- Keep the fixed bottom composer, but make the scroll container reserve space using the measured composer height.
+- Change the bottom padding to include the composer height plus a clear safety gap so the last message never sits under the composer.
+- Track whether the user is near the bottom before composer size changes; only follow the bottom if they were already near the bottom.
+- Use instant scroll adjustments during resize/drag to avoid smooth-scroll fighting the drag operation.
 
-- No changes to message rendering, header, ambient canvas, fonts, colors, footer, or text-mode composer behavior.
-- No new dependencies.
+### 4. Stop unnecessary scroll fighting
+
+In `src/routes/chat.tsx`:
+
+- Keep auto-scroll for new messages.
+- Do not continuously smooth-scroll while the composer is resizing; this is likely part of the current “buggy” feeling.
+- Preserve hidden scrollbar behavior.
+
+## Expected behavior
+
+- Opening the code editor pushes visible chat history upward instead of covering it.
+- Typing code no longer jitters the editor height.
+- If code content grows beyond the editor height, Monaco scrolls internally.
+- Dragging the codebox feels steady and predictable.
+- The composer remains fixed at the bottom, but the chat history has enough bottom padding to remain readable.
 
 ## Files
 
 - `src/components/Composer.tsx`
-- `src/routes/chat.tsx` (one-line padding tweak only)
+- `src/routes/chat.tsx`

@@ -42,16 +42,18 @@ export function Composer({
   const codePanelRef = useRef<HTMLDivElement>(null);
   const { resolved } = useTheme();
   const monacoRef = useRef<typeof import("monaco-editor") | null>(null);
-  const editorInstanceRef = useRef<unknown>(null);
 
-  const MIN_EDITOR_H = 140;
-  const [editorHeight, setEditorHeight] = useState<number>(220);
-  const [userHeight, setUserHeight] = useState<number | null>(null);
+  const MIN_EDITOR_H = 150;
+  const DEFAULT_EDITOR_H = 260;
+  const CHROME_OFFSET = 128;
+  const [editorHeight, setEditorHeight] = useState<number>(DEFAULT_EDITOR_H);
+  const [dragging, setDragging] = useState(false);
+  const dragStartRef = useRef<{ y: number; h: number } | null>(null);
   const [vh, setVh] = useState<number>(() =>
     typeof window === "undefined" ? 800 : window.innerHeight,
   );
-  const CHROME_OFFSET = 180; // toolbar + paddings + composer chrome reserve
   const maxEditorH = Math.max(MIN_EDITOR_H, Math.floor(vh * 0.65) - CHROME_OFFSET);
+  const clampEditorHeight = (height: number) => Math.max(MIN_EDITOR_H, Math.min(height, maxEditorH));
 
   useEffect(() => {
     const onResize = () => setVh(window.innerHeight);
@@ -59,13 +61,10 @@ export function Composer({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Re-clamp when viewport or user override changes
+  // Re-clamp when viewport changes so the panel never exceeds 65vh.
   useEffect(() => {
-    setEditorHeight((h) => {
-      const target = userHeight ?? h;
-      return Math.max(MIN_EDITOR_H, Math.min(target, maxEditorH));
-    });
-  }, [maxEditorH, userHeight]);
+    setEditorHeight((h) => Math.max(MIN_EDITOR_H, Math.min(h, maxEditorH)));
+  }, [maxEditorH]);
 
   const toHex = (input: string, fallback: string) => {
     try {
