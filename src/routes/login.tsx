@@ -4,6 +4,7 @@ import gsap from "gsap";
 import { AmbientCanvas } from "@/components/AmbientCanvas";
 import { GradientCard } from "@/components/GradientCard";
 import { store } from "@/lib/jargon-store";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
