@@ -29,6 +29,7 @@ export function ThemeToggle({
   const isDark = resolved === "dark";
 
   if (floating) {
+    if (!mounted) return null;
     return (
       <button
         onClick={onClick}
