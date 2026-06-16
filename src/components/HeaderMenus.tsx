@@ -6,8 +6,8 @@ import { LESSONS, type MentorConfig } from "@/lib/jargon-store";
 type MenuKey = "lessons" | "progress" | "mentor";
 
 const WIDTHS: Record<MenuKey, number> = {
-  lessons: 360,
-  progress: 360,
+  lessons: 380,
+  progress: 380,
   mentor: 380,
 };
 
