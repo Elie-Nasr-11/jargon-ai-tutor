@@ -43,6 +43,8 @@ function ChatPage() {
   ]);
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const composerWrapRef = useRef<HTMLDivElement>(null);
+  const [composerHeight, setComposerHeight] = useState(96);
 
   useEffect(() => {
     const u = store.getUser();
@@ -55,10 +57,35 @@ function ChatPage() {
     setMentor(store.getMentor());
   }, [navigate]);
 
+  // Track composer height so the scroll area always reserves the right space.
+  useEffect(() => {
+    const el = composerWrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      setComposerHeight((prev) => {
+        const next = el.offsetHeight;
+        // If we were near the bottom, follow the growth smoothly.
+        const sc = scrollRef.current;
+        if (sc) {
+          const distance = sc.scrollHeight - sc.scrollTop - sc.clientHeight;
+          if (next > prev && distance < 120) {
+            requestAnimationFrame(() => {
+              sc.scrollTo({ top: sc.scrollHeight, behavior: "smooth" });
+            });
+          }
+        }
+        return next;
+      });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [msgs.length]);
+
 
   const addMsg = (m: Msg) => setMsgs((prev) => [...prev, m]);
 
