@@ -40,6 +40,72 @@ export function Composer({
   const morphRef = useRef<HTMLDivElement>(null);
   const textPanelRef = useRef<HTMLDivElement>(null);
   const codePanelRef = useRef<HTMLDivElement>(null);
+  const { resolved } = useTheme();
+  const monacoRef = useRef<typeof import("monaco-editor") | null>(null);
+
+  const toHex = (input: string, fallback: string) => {
+    try {
+      const c = document.createElement("canvas").getContext("2d");
+      if (!c) return fallback;
+      c.fillStyle = "#000";
+      c.fillStyle = input;
+      const v = c.fillStyle as string;
+      if (typeof v === "string" && v.startsWith("#")) return v;
+    } catch {
+      /* noop */
+    }
+    return fallback;
+  };
+
+  const applyMonacoTheme = (monaco: typeof import("monaco-editor")) => {
+    const bg = toHex(readVar("--surface", "#0b0b0d"), "#0b0b0d");
+    const fg = toHex(readVar("--foreground", "#e6e6ea"), "#e6e6ea");
+    const muted = toHex(readVar("--muted-foreground", "#8a8a90"), "#8a8a90");
+    const accent = toHex(readVar("--accent", "#7c5cff"), "#7c5cff");
+    const isDark = document.documentElement.classList.contains("dark");
+    monaco.editor.defineTheme(JARGON_DARK_THEME, {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "comment", foreground: muted.slice(1), fontStyle: "italic" },
+        { token: "keyword", foreground: accent.slice(1) },
+        { token: "string", foreground: "8ad0a8" },
+        { token: "number", foreground: "f0a868" },
+      ],
+      colors: {
+        "editor.background": bg,
+        "editor.foreground": fg,
+        "editorLineNumber.foreground": muted,
+        "editorCursor.foreground": fg,
+        "editor.selectionBackground": "#ffffff20",
+        "editor.inactiveSelectionBackground": "#ffffff14",
+      },
+    });
+    monaco.editor.defineTheme(JARGON_LIGHT_THEME, {
+      base: "vs",
+      inherit: true,
+      rules: [
+        { token: "comment", foreground: muted.slice(1), fontStyle: "italic" },
+        { token: "keyword", foreground: accent.slice(1) },
+      ],
+      colors: {
+        "editor.background": bg,
+        "editor.foreground": fg,
+        "editorLineNumber.foreground": muted,
+        "editorCursor.foreground": fg,
+      },
+    });
+    monaco.editor.setTheme(isDark ? JARGON_DARK_THEME : JARGON_LIGHT_THEME);
+  };
+
+  const handleMonacoMount = (_editor: unknown, monaco: typeof import("monaco-editor")) => {
+    monacoRef.current = monaco;
+    applyMonacoTheme(monaco);
+  };
+
+  useEffect(() => {
+    if (monacoRef.current) applyMonacoTheme(monacoRef.current);
+  }, [resolved]);
 
   // smooth height morph between text & code panels
   useLayoutEffect(() => {
