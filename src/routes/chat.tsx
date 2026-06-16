@@ -121,7 +121,7 @@ function ChatPage() {
       </header>
 
       <main className="relative z-10 mx-auto flex w-full min-h-0 max-w-[760px] flex-1 flex-col px-5 pt-10">
-        <div ref={scrollRef} className="min-h-0 flex-1 space-y-5 overflow-y-auto pb-[200px]">
+        <div ref={scrollRef} className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto pb-[200px]">
           {msgs.map((m) => (
             <MessageRow key={m.id} msg={m} />
           ))}
