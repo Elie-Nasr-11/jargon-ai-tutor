@@ -277,7 +277,24 @@ export function Composer({
                   </button>
                 </div>
               </div>
-              <div className="overflow-hidden rounded-lg border border-border bg-muted/40">
+              <div
+                role="separator"
+                aria-orientation="horizontal"
+                aria-label="Resize editor"
+                title="Drag to resize · double-click to auto-fit"
+                onPointerDown={onHandlePointerDown}
+                onPointerMove={onHandlePointerMove}
+                onPointerUp={onHandlePointerUp}
+                onPointerCancel={onHandlePointerUp}
+                onDoubleClick={onHandleDoubleClick}
+                className="group mb-1 flex h-2.5 cursor-ns-resize items-center justify-center touch-none select-none"
+              >
+                <div className="h-[3px] w-10 rounded-full bg-border transition-colors group-hover:bg-muted-foreground/60" />
+              </div>
+              <div
+                className="overflow-hidden rounded-lg border border-border bg-muted/40"
+                style={{ height: editorHeight, transition: dragStartRef.current ? "none" : "height 140ms ease-out" }}
+              >
                 <Suspense
                   fallback={
                     <div className="px-3 py-6 text-[12px] text-muted-foreground">
@@ -286,7 +303,7 @@ export function Composer({
                   }
                 >
                   <MonacoEditor
-                    height="220px"
+                    height="100%"
                     language={lang}
                     value={code}
                     onChange={(v) => setCode(v ?? "")}
@@ -302,7 +319,7 @@ export function Composer({
                       padding: { top: 12, bottom: 12 },
                       renderLineHighlight: "none",
                       overviewRulerLanes: 0,
-                      scrollbar: { vertical: "hidden", horizontal: "hidden" },
+                      scrollbar: { vertical: "auto", horizontal: "hidden" },
                     }}
                   />
                 </Suspense>
