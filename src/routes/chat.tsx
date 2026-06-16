@@ -43,6 +43,8 @@ function ChatPage() {
   ]);
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const composerWrapRef = useRef<HTMLDivElement>(null);
+  const [composerHeight, setComposerHeight] = useState(96);
 
   useEffect(() => {
     const u = store.getUser();
@@ -55,10 +57,35 @@ function ChatPage() {
     setMentor(store.getMentor());
   }, [navigate]);
 
+  // Track composer height so the scroll area always reserves the right space.
+  useEffect(() => {
+    const el = composerWrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      setComposerHeight((prev) => {
+        const next = el.offsetHeight;
+        // If we were near the bottom, follow the growth smoothly.
+        const sc = scrollRef.current;
+        if (sc) {
+          const distance = sc.scrollHeight - sc.scrollTop - sc.clientHeight;
+          if (next > prev && distance < 120) {
+            requestAnimationFrame(() => {
+              sc.scrollTo({ top: sc.scrollHeight, behavior: "smooth" });
+            });
+          }
+        }
+        return next;
+      });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [msgs.length]);
+
 
   const addMsg = (m: Msg) => setMsgs((prev) => [...prev, m]);
 
@@ -121,7 +148,11 @@ function ChatPage() {
       </header>
 
       <main className="relative z-10 mx-auto flex w-full min-h-0 max-w-[760px] flex-1 flex-col px-5 pt-10">
-        <div ref={scrollRef} className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto pb-[200px]">
+        <div
+          ref={scrollRef}
+          className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto"
+          style={{ paddingBottom: composerHeight + 24 }}
+        >
           {msgs.map((m) => (
             <MessageRow key={m.id} msg={m} />
           ))}
@@ -129,6 +160,7 @@ function ChatPage() {
       </main>
 
       <div
+        ref={composerWrapRef}
         className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-5 pb-6 pt-6"
       >
         <div className="pointer-events-auto w-full max-w-[760px]">

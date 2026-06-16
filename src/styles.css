@@ -164,7 +164,7 @@ html, body {
 ::-webkit-scrollbar-thumb { background: var(--ink-16); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--ink-30); }
 
-.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; scroll-behavior: smooth; }
 .no-scrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
 @layer base {
