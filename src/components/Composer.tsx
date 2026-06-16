@@ -113,26 +113,27 @@ export function Composer({
     const target = (mode === "text" ? textPanelRef.current : codePanelRef.current);
     if (!wrap || !target) return;
     const fromH = wrap.offsetHeight;
-    // measure target after it renders
     const toH = target.scrollHeight;
     gsap.fromTo(
       wrap,
       { height: fromH },
       {
         height: toH,
-        duration: 0.42,
-        ease: "power3.inOut",
+        duration: 0.36,
+        ease: "power3.out",
         onComplete: () => {
-          wrap.style.height = "auto";
+          requestAnimationFrame(() => {
+            if (morphRef.current) morphRef.current.style.height = "auto";
+          });
         },
       },
     );
     gsap.fromTo(
       target,
       { opacity: 0, y: 6 },
-      { opacity: 1, y: 0, duration: 0.32, ease: "power2.out", delay: 0.08 },
+      { opacity: 1, y: 0, duration: 0.3, ease: "power2.out", delay: 0.06 },
     );
-  }, [mode]);
+  }, [mode, lang]);
 
   const send = () => {
     const t = text.trim();
