@@ -6,8 +6,8 @@ import { LESSONS, type MentorConfig } from "@/lib/jargon-store";
 type MenuKey = "lessons" | "progress" | "mentor";
 
 const WIDTHS: Record<MenuKey, number> = {
-  lessons: 360,
-  progress: 360,
+  lessons: 380,
+  progress: 380,
   mentor: 380,
 };
 
@@ -147,28 +147,30 @@ export function HeaderMenus({
         ref={panelRef}
         onMouseEnter={cancelClose}
         onMouseLeave={leave}
-        className="pointer-events-auto absolute left-1/2 top-[calc(100%+10px)] -translate-x-1/2 overflow-hidden"
+        className="pointer-events-auto absolute left-1/2 top-[calc(100%+10px)] -translate-x-1/2"
         style={{
-          width: contentKey ? WIDTHS[contentKey] : 360,
+          width: contentKey ? WIDTHS[contentKey] : 380,
           opacity: 0,
           willChange: "transform, opacity, width, height",
           transform: "translateZ(0)",
           display: contentKey ? "block" : "none",
         }}
       >
-        <GradientCard>
-          <div ref={innerRef} style={{ willChange: "transform, opacity" }}>
-            <div ref={sizerRef} className="p-5">
-              {contentKey === "lessons" && (
-                <LessonsPanel activeId={activeLessonId} onSelect={onSelectLesson} />
-              )}
-              {contentKey === "progress" && <ProgressPanel activeId={activeLessonId} />}
-              {contentKey === "mentor" && (
-                <MentorPanel mentor={mentor} onChange={onMentorChange} />
-              )}
+        <div ref={sizerRef}>
+          <GradientCard>
+            <div ref={innerRef} style={{ willChange: "transform, opacity" }}>
+              <div className="p-5">
+                {contentKey === "lessons" && (
+                  <LessonsPanel activeId={activeLessonId} onSelect={onSelectLesson} />
+                )}
+                {contentKey === "progress" && <ProgressPanel activeId={activeLessonId} />}
+                {contentKey === "mentor" && (
+                  <MentorPanel mentor={mentor} onChange={onMentorChange} />
+                )}
+              </div>
             </div>
-          </div>
-        </GradientCard>
+          </GradientCard>
+        </div>
       </div>
     </nav>
   );
@@ -212,10 +214,8 @@ function LessonsPanel({
         <div
           ref={indicatorRef}
           aria-hidden
-          className="pointer-events-none absolute left-1 top-0 w-[3px] rounded-full"
+          className="pointer-events-none absolute left-1 top-0 w-[3px] rounded-full bg-foreground"
           style={{
-            background:
-              "linear-gradient(180deg, var(--grad-1), var(--grad-2), var(--grad-3), var(--grad-4), var(--grad-5))",
             height: 24,
             willChange: "transform, height",
           }}
@@ -266,11 +266,7 @@ function ProgressPanel({ activeId }: { activeId: string }) {
       <div className="mt-4 h-[5px] w-full overflow-hidden rounded-full bg-muted">
         <div
           ref={barRef}
-          className="h-full rounded-full"
-          style={{
-            background:
-              "linear-gradient(90deg, var(--grad-1), var(--grad-2), var(--grad-3), var(--grad-4), var(--grad-5))",
-          }}
+          className="h-full rounded-full bg-foreground"
         />
       </div>
       <div className="mt-1 flex justify-between text-[11.5px] text-muted-foreground">
@@ -284,11 +280,9 @@ function ProgressPanel({ activeId }: { activeId: string }) {
             <span className="flex-1 truncate text-[13px] text-foreground">{l.title}</span>
             <span className="h-[3px] w-20 overflow-hidden rounded-full bg-muted">
               <span
-                className="block h-full"
+                className="block h-full bg-foreground"
                 style={{
                   width: `${Math.round(l.progress * 100)}%`,
-                  background:
-                    "linear-gradient(90deg, var(--grad-1), var(--grad-3), var(--grad-5))",
                 }}
               />
             </span>

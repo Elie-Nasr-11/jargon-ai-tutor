@@ -4,6 +4,7 @@ import gsap from "gsap";
 import { AmbientCanvas } from "@/components/AmbientCanvas";
 import { GradientCard } from "@/components/GradientCard";
 import { store } from "@/lib/jargon-store";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -57,6 +58,7 @@ function LoginPage() {
   return (
     <div className="relative min-h-screen overflow-hidden" style={{ background: "var(--background)" }}>
       <AmbientCanvas intensity={0.85} />
+      <ThemeToggle floating />
       <div
         ref={wrapRef}
         className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 py-16"

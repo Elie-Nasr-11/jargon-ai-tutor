@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import gsap from "gsap";
 import { useTheme } from "@/lib/theme";
@@ -12,6 +12,8 @@ export function ThemeToggle({
 }) {
   const { resolved, toggle } = useTheme();
   const iconRef = useRef<HTMLSpanElement>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const onClick = () => {
     if (iconRef.current) {
@@ -27,6 +29,7 @@ export function ThemeToggle({
   const isDark = resolved === "dark";
 
   if (floating) {
+    if (!mounted) return null;
     return (
       <button
         onClick={onClick}
