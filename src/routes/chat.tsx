@@ -128,7 +128,7 @@ function ChatPage() {
 
       <header className="z-20 shrink-0 backdrop-blur-md" style={{ background: "color-mix(in oklab, var(--background) 72%, transparent)" }}>
         <div className="hairline">
-          <div className="mx-auto flex h-[60px] max-w-[1200px] items-center justify-between px-6">
+          <div className="mx-auto flex h-[60px] max-w-[1200px] items-center justify-between gap-2 px-3 sm:px-6">
             <div className="font-serif text-[22px] tracking-tight">Jargon</div>
             <HeaderMenus
               activeLessonId={lessonId}
