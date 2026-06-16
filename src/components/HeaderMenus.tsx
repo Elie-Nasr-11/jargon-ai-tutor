@@ -214,10 +214,8 @@ function LessonsPanel({
         <div
           ref={indicatorRef}
           aria-hidden
-          className="pointer-events-none absolute left-1 top-0 w-[3px] rounded-full"
+          className="pointer-events-none absolute left-1 top-0 w-[3px] rounded-full bg-foreground"
           style={{
-            background:
-              "linear-gradient(180deg, var(--grad-1), var(--grad-2), var(--grad-3), var(--grad-4), var(--grad-5))",
             height: 24,
             willChange: "transform, height",
           }}
