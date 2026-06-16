@@ -52,13 +52,16 @@ export function AmbientCanvas({ intensity = 0.5 }: Props) {
           float n = noise(p + vec2(t, -t*0.7));
           n = mix(n, noise(p*1.8 - vec2(t*0.4, t)), 0.5);
 
-          vec3 c1 = vec3(0.655, 0.545, 0.980); // violet
-          vec3 c2 = vec3(0.376, 0.647, 0.980); // blue
-          vec3 c3 = vec3(0.988, 0.827, 0.302); // amber
-          vec3 c4 = vec3(0.984, 0.443, 0.522); // pink
-          vec3 col = mix(c1, c2, smoothstep(0.0, 0.5, n));
-          col = mix(col, c3, smoothstep(0.4, 0.75, n));
-          col = mix(col, c4, smoothstep(0.7, 1.0, n));
+          // rainbow: yellow → orange → pink → purple → blue
+          vec3 cYellow = vec3(0.965, 0.827, 0.420);
+          vec3 cOrange = vec3(0.976, 0.659, 0.420);
+          vec3 cPink   = vec3(0.961, 0.522, 0.733);
+          vec3 cPurple = vec3(0.561, 0.643, 0.937);
+          vec3 cBlue   = vec3(0.447, 0.722, 0.961);
+          vec3 col = mix(cYellow, cOrange, smoothstep(0.0, 0.30, n));
+          col = mix(col, cPink,   smoothstep(0.25, 0.55, n));
+          col = mix(col, cPurple, smoothstep(0.50, 0.80, n));
+          col = mix(col, cBlue,   smoothstep(0.75, 1.0,  n));
 
           // soft vignette + low alpha
           float v = smoothstep(1.2, 0.2, distance(uv, vec2(0.5)));
