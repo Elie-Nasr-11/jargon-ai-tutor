@@ -21,11 +21,18 @@ export function SettingsMenu({ email }: { email: string }) {
   const close = () => setVisible(false);
 
   useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
+    const onDoc = (e: PointerEvent) => {
       if (!wrapRef.current?.contains(e.target as Node)) close();
     };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    document.addEventListener("pointerdown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   useEffect(() => {
@@ -53,14 +60,19 @@ export function SettingsMenu({ email }: { email: string }) {
   return (
     <div ref={wrapRef} className="relative">
       <button
+        type="button"
         onClick={() => (visible ? close() : open())}
         aria-label="Settings"
-        className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-9 sm:w-9"
       >
         <Settings className="h-[18px] w-[18px]" strokeWidth={1.5} />
       </button>
       {mounted && (
-        <div ref={panelRef} className="absolute right-0 top-[calc(100%+10px)] w-[260px]">
+        <div
+          ref={panelRef}
+          className="absolute right-0 top-[calc(100%+10px)]"
+          style={{ width: "min(280px, calc(100vw - 16px))" }}
+        >
           <GradientCard>
             <div className="p-4">
               <div className="flex items-center gap-3 px-1 pb-3">
@@ -74,8 +86,9 @@ export function SettingsMenu({ email }: { email: string }) {
               </div>
               <div className="my-2 h-px bg-border" />
               <button
+                type="button"
                 onClick={toggle}
-                className="flex w-full items-center justify-between gap-2.5 rounded-md px-2 py-2 text-left text-[13px] text-foreground transition-colors hover:bg-muted"
+                className="flex w-full items-center justify-between gap-2.5 rounded-md px-2 py-3 text-left text-[13px] text-foreground transition-colors hover:bg-muted sm:py-2"
               >
                 <span className="flex items-center gap-2.5">
                   {resolved === "dark" ? (
@@ -90,11 +103,12 @@ export function SettingsMenu({ email }: { email: string }) {
                 </span>
               </button>
               <button
+                type="button"
                 onClick={() => {
                   store.clearUser();
                   navigate({ to: "/login" });
                 }}
-                className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-[13px] text-foreground transition-colors hover:bg-muted"
+                className="flex w-full items-center gap-2.5 rounded-md px-2 py-3 text-left text-[13px] text-foreground transition-colors hover:bg-muted sm:py-2"
               >
                 <LogOut className="h-[15px] w-[15px]" strokeWidth={1.5} /> Log out
               </button>

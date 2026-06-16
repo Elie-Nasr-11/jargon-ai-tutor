@@ -11,6 +11,19 @@ const WIDTHS: Record<MenuKey, number> = {
   mentor: 380,
 };
 
+function useIsTouch() {
+  const [touch, setTouch] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(hover: none), (max-width: 639px)");
+    const update = () => setTouch(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
+  return touch;
+}
+
 export function HeaderMenus({
   activeLessonId,
   onSelectLesson,
@@ -22,6 +35,7 @@ export function HeaderMenus({
   mentor: MentorConfig;
   onMentorChange: (m: MentorConfig) => void;
 }) {
+  const isTouch = useIsTouch();
   const [activeKey, setActiveKey] = useState<MenuKey | null>(null);
   const [contentKey, setContentKey] = useState<MenuKey | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -29,6 +43,8 @@ export function HeaderMenus({
   const panelRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const sizerRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
   const isOpenRef = useRef(false);
 
   const cancelClose = () => {
@@ -46,15 +62,44 @@ export function HeaderMenus({
     cancelClose();
     closeTimer.current = setTimeout(() => setActiveKey(null), 110);
   };
+  const close = () => {
+    cancelClose();
+    setActiveKey(null);
+  };
+  const toggle = (k: MenuKey) => {
+    cancelClose();
+    setActiveKey((prev) => (prev === k ? null : k));
+  };
 
-  // open/close
+  // Outside tap + Escape close
   useEffect(() => {
+    if (!activeKey) return;
+    const onPointer = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (wrapRef.current?.contains(t)) return;
+      if (sheetRef.current?.contains(t)) return;
+      close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [activeKey]);
+
+  // Desktop dropdown open/close
+  useEffect(() => {
+    if (isTouch) return;
     const panel = panelRef.current;
     if (!panel) return;
     if (activeKey) {
       if (!contentKey) {
         setContentKey(activeKey);
-        return; // wait for next render with contentKey set so panel is visible
+        return;
       }
       if (!isOpenRef.current) {
         isOpenRef.current = true;
@@ -76,19 +121,18 @@ export function HeaderMenus({
         ease: "power2.in",
       });
     }
-  }, [activeKey, contentKey]);
+  }, [activeKey, contentKey, isTouch]);
 
-  // crossfade + size morph when active changes
+  // Desktop crossfade + size morph
   useLayoutEffect(() => {
+    if (isTouch) return;
     if (!activeKey || !panelRef.current || !innerRef.current) return;
     if (activeKey === contentKey) {
-      // initial size set
       const targetW = WIDTHS[activeKey];
       const h = sizerRef.current?.offsetHeight ?? innerRef.current.offsetHeight;
       gsap.set(panelRef.current, { width: targetW, height: h });
       return;
     }
-    // morph to new content
     const targetW = WIDTHS[activeKey];
     const inner = innerRef.current;
     gsap.killTweensOf(inner);
@@ -115,7 +159,60 @@ export function HeaderMenus({
         });
       },
     });
-  }, [activeKey, contentKey]);
+  }, [activeKey, contentKey, isTouch]);
+
+  // Mobile sheet animation
+  useEffect(() => {
+    if (!isTouch) return;
+    const sheet = sheetRef.current;
+    const backdrop = backdropRef.current;
+    if (activeKey) {
+      if (!contentKey) {
+        setContentKey(activeKey);
+        return;
+      }
+      if (sheet && backdrop) {
+        gsap.killTweensOf([sheet, backdrop]);
+        gsap.fromTo(
+          backdrop,
+          { opacity: 0 },
+          { opacity: 1, duration: 0.2, ease: "power2.out" },
+        );
+        gsap.fromTo(
+          sheet,
+          { y: "100%" },
+          { y: "0%", duration: 0.32, ease: "power3.out" },
+        );
+      }
+    } else if (sheet && backdrop && contentKey) {
+      gsap.killTweensOf([sheet, backdrop]);
+      gsap.to(backdrop, { opacity: 0, duration: 0.18, ease: "power2.in" });
+      gsap.to(sheet, {
+        y: "100%",
+        duration: 0.22,
+        ease: "power2.in",
+        onComplete: () => setContentKey(null),
+      });
+    }
+  }, [activeKey, contentKey, isTouch]);
+
+  // When swapping content within mobile sheet, just swap (no morph needed)
+  useEffect(() => {
+    if (!isTouch) return;
+    if (activeKey && contentKey && activeKey !== contentKey) {
+      setContentKey(activeKey);
+    }
+  }, [activeKey, contentKey, isTouch]);
+
+  // Lock body scroll while mobile sheet is open
+  useEffect(() => {
+    if (!isTouch || !activeKey) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isTouch, activeKey]);
 
   const items: { key: MenuKey; label: string }[] = [
     { key: "lessons", label: "Lessons" },
@@ -123,19 +220,37 @@ export function HeaderMenus({
     { key: "mentor", label: "Mentor" },
   ];
 
+  const renderPanelBody = (k: MenuKey | null) => (
+    <>
+      {k === "lessons" && (
+        <LessonsPanel
+          activeId={activeLessonId}
+          onSelect={(id) => {
+            onSelectLesson(id);
+            if (isTouch) close();
+          }}
+        />
+      )}
+      {k === "progress" && <ProgressPanel activeId={activeLessonId} />}
+      {k === "mentor" && <MentorPanel mentor={mentor} onChange={onMentorChange} />}
+    </>
+  );
+
   return (
     <nav
       ref={wrapRef}
-      className="relative flex items-center gap-1"
-      onMouseLeave={leave}
-      onMouseEnter={cancelClose}
+      className="relative flex items-center gap-0.5 sm:gap-1"
+      onMouseLeave={isTouch ? undefined : leave}
+      onMouseEnter={isTouch ? undefined : cancelClose}
     >
       {items.map((it) => (
         <button
           key={it.key}
-          onMouseEnter={() => enter(it.key)}
-          onFocus={() => enter(it.key)}
-          className={`relative rounded-full px-3.5 py-1.5 text-[13.5px] tracking-tight transition-colors ${
+          type="button"
+          onMouseEnter={isTouch ? undefined : () => enter(it.key)}
+          onFocus={isTouch ? undefined : () => enter(it.key)}
+          onClick={() => toggle(it.key)}
+          className={`relative inline-flex min-h-[44px] items-center rounded-full px-3 text-[14px] tracking-tight transition-colors sm:min-h-0 sm:px-3.5 sm:py-1.5 sm:text-[13.5px] ${
             activeKey === it.key ? "text-foreground" : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -143,35 +258,76 @@ export function HeaderMenus({
         </button>
       ))}
 
-      <div
-        ref={panelRef}
-        onMouseEnter={cancelClose}
-        onMouseLeave={leave}
-        className="pointer-events-auto absolute left-1/2 top-[calc(100%+10px)] -translate-x-1/2"
-        style={{
-          width: contentKey ? WIDTHS[contentKey] : 380,
-          opacity: 0,
-          willChange: "transform, opacity, width, height",
-          transform: "translateZ(0)",
-          display: contentKey ? "block" : "none",
-        }}
-      >
-        <div ref={sizerRef}>
-          <GradientCard>
-            <div ref={innerRef} style={{ willChange: "transform, opacity" }}>
-              <div className="p-5">
-                {contentKey === "lessons" && (
-                  <LessonsPanel activeId={activeLessonId} onSelect={onSelectLesson} />
-                )}
-                {contentKey === "progress" && <ProgressPanel activeId={activeLessonId} />}
-                {contentKey === "mentor" && (
-                  <MentorPanel mentor={mentor} onChange={onMentorChange} />
-                )}
+      {/* Desktop dropdown */}
+      {!isTouch && (
+        <div
+          ref={panelRef}
+          onMouseEnter={cancelClose}
+          onMouseLeave={leave}
+          className="pointer-events-auto absolute left-1/2 top-[calc(100%+10px)] -translate-x-1/2"
+          style={{
+            width: contentKey ? WIDTHS[contentKey] : 380,
+            opacity: 0,
+            willChange: "transform, opacity, width, height",
+            transform: "translateZ(0)",
+            display: contentKey ? "block" : "none",
+          }}
+        >
+          <div ref={sizerRef}>
+            <GradientCard>
+              <div ref={innerRef} style={{ willChange: "transform, opacity" }}>
+                <div className="p-5">{renderPanelBody(contentKey)}</div>
               </div>
-            </div>
-          </GradientCard>
+            </GradientCard>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Mobile bottom sheet */}
+      {isTouch && contentKey && (
+        <>
+          <div
+            ref={backdropRef}
+            onClick={close}
+            className="fixed inset-0 z-40"
+            style={{ background: "color-mix(in oklab, var(--background) 55%, rgba(0,0,0,0.45))", opacity: 0 }}
+          />
+          <div
+            ref={sheetRef}
+            className="fixed inset-x-0 bottom-0 z-50"
+            style={{ transform: "translateY(100%)" }}
+          >
+            <div className="mx-auto w-full max-w-[640px] px-2 pb-[max(env(safe-area-inset-bottom),12px)]">
+              <GradientCard>
+                <div className="flex flex-col" style={{ maxHeight: "78vh" }}>
+                  <div className="flex justify-center pt-2.5">
+                    <span className="h-1 w-10 rounded-full bg-muted-foreground/40" />
+                  </div>
+                  <div className="flex items-center gap-1 px-3 pt-2">
+                    {items.map((it) => (
+                      <button
+                        key={it.key}
+                        type="button"
+                        onClick={() => setActiveKey(it.key)}
+                        className={`min-h-[40px] flex-1 rounded-full px-3 text-[13px] transition-colors ${
+                          activeKey === it.key
+                            ? "bg-foreground text-background"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {it.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="min-h-0 overflow-y-auto px-5 pb-5 pt-3">
+                    {renderPanelBody(contentKey)}
+                  </div>
+                </div>
+              </GradientCard>
+            </div>
+          </div>
+        </>
+      )}
     </nav>
   );
 }
@@ -192,7 +348,7 @@ function LessonsPanel({
     const ind = indicatorRef.current;
     if (!list || !ind) return;
     const idx = LESSONS.findIndex((l) => l.id === activeId);
-    const row = list.children[idx + 1] as HTMLElement | undefined; // +1 because indicator is first child
+    const row = list.children[idx + 1] as HTMLElement | undefined;
     if (!row) return;
     const props = {
       y: row.offsetTop + 6,
@@ -225,8 +381,9 @@ function LessonsPanel({
           return (
             <button
               key={l.id}
+              type="button"
               onClick={() => onSelect(l.id)}
-              className="group relative flex w-full items-start gap-3 rounded-md py-2 pl-5 pr-1 text-left transition-colors hover:bg-muted/60"
+              className="group relative flex w-full items-start gap-3 rounded-md py-3 pl-5 pr-1 text-left transition-colors hover:bg-muted/60 sm:py-2"
             >
               <span className="flex-1">
                 <span
@@ -276,7 +433,7 @@ function ProgressPanel({ activeId }: { activeId: string }) {
 
       <div className="mt-5 space-y-2">
         {LESSONS.filter((l) => l.id !== active.id).map((l) => (
-          <div key={l.id} className="flex items-center gap-3">
+          <div key={l.id} className="flex items-center gap-3 py-1">
             <span className="flex-1 truncate text-[13px] text-foreground">{l.title}</span>
             <span className="h-[3px] w-20 overflow-hidden rounded-full bg-muted">
               <span
@@ -379,11 +536,12 @@ function MentorGroup({
           return (
             <button
               key={opt}
+              type="button"
               ref={(el) => {
                 btnRefs.current[i] = el;
               }}
               onClick={() => onSelect(opt)}
-              className={`relative z-10 flex-1 rounded-full px-2.5 py-1.5 text-[12.5px] transition-colors ${
+              className={`relative z-10 flex-1 rounded-full px-2.5 py-2.5 text-[13px] transition-colors sm:py-1.5 sm:text-[12.5px] ${
                 active ? "text-background" : "text-muted-foreground hover:text-foreground"
               }`}
             >
