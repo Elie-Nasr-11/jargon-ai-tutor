@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import gsap from "gsap";
 import { Code2, Send, Play, X } from "lucide-react";
 import { GradientCard } from "./GradientCard";
@@ -42,16 +42,18 @@ export function Composer({
   const codePanelRef = useRef<HTMLDivElement>(null);
   const { resolved } = useTheme();
   const monacoRef = useRef<typeof import("monaco-editor") | null>(null);
-  const editorInstanceRef = useRef<unknown>(null);
 
-  const MIN_EDITOR_H = 140;
-  const [editorHeight, setEditorHeight] = useState<number>(220);
-  const [userHeight, setUserHeight] = useState<number | null>(null);
+  const MIN_EDITOR_H = 150;
+  const DEFAULT_EDITOR_H = 260;
+  const CHROME_OFFSET = 128;
+  const [editorHeight, setEditorHeight] = useState<number>(DEFAULT_EDITOR_H);
+  const [dragging, setDragging] = useState(false);
+  const dragStartRef = useRef<{ y: number; h: number } | null>(null);
   const [vh, setVh] = useState<number>(() =>
     typeof window === "undefined" ? 800 : window.innerHeight,
   );
-  const CHROME_OFFSET = 180; // toolbar + paddings + composer chrome reserve
   const maxEditorH = Math.max(MIN_EDITOR_H, Math.floor(vh * 0.65) - CHROME_OFFSET);
+  const clampEditorHeight = (height: number) => Math.max(MIN_EDITOR_H, Math.min(height, maxEditorH));
 
   useEffect(() => {
     const onResize = () => setVh(window.innerHeight);
@@ -59,13 +61,10 @@ export function Composer({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Re-clamp when viewport or user override changes
+  // Re-clamp when viewport changes so the panel never exceeds 65vh.
   useEffect(() => {
-    setEditorHeight((h) => {
-      const target = userHeight ?? h;
-      return Math.max(MIN_EDITOR_H, Math.min(target, maxEditorH));
-    });
-  }, [maxEditorH, userHeight]);
+    setEditorHeight((h) => Math.max(MIN_EDITOR_H, Math.min(h, maxEditorH)));
+  }, [maxEditorH]);
 
   const toHex = (input: string, fallback: string) => {
     try {
@@ -122,20 +121,9 @@ export function Composer({
     monaco.editor.setTheme(isDark ? JARGON_DARK_THEME : JARGON_LIGHT_THEME);
   };
 
-  const handleMonacoMount = (
-    editor: { onDidContentSizeChange: (cb: () => void) => void; getContentHeight: () => number },
-    monaco: typeof import("monaco-editor"),
-  ) => {
+  const handleMonacoMount = (_editor: unknown, monaco: typeof import("monaco-editor")) => {
     monacoRef.current = monaco;
-    editorInstanceRef.current = editor;
     applyMonacoTheme(monaco);
-    const sync = () => {
-      const ch = editor.getContentHeight();
-      if (userHeight != null) return; // user override wins
-      setEditorHeight(Math.max(MIN_EDITOR_H, Math.min(ch + 16, maxEditorH)));
-    };
-    editor.onDidContentSizeChange(sync);
-    sync();
   };
 
   useEffect(() => {
@@ -170,25 +158,36 @@ export function Composer({
     );
   }, [mode]);
 
-  // Drag handle for manual resize
-  const dragStartRef = useRef<{ y: number; h: number } | null>(null);
-  const onHandlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  // Stable manual resize: window-level listeners keep drag smooth outside the handle.
+  useEffect(() => {
+    if (!dragging) return;
+
+    const onMove = (e: PointerEvent) => {
+      const start = dragStartRef.current;
+      if (!start) return;
+      setEditorHeight(clampEditorHeight(start.h + start.y - e.clientY));
+    };
+
+    const onUp = () => {
+      dragStartRef.current = null;
+      setDragging(false);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [dragging, maxEditorH]);
+
+  const onHandlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     dragStartRef.current = { y: e.clientY, h: editorHeight };
+    setDragging(true);
   };
-  const onHandlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragStartRef.current) return;
-    const delta = dragStartRef.current.y - e.clientY; // drag up grows
-    const next = Math.max(MIN_EDITOR_H, Math.min(dragStartRef.current.h + delta, maxEditorH));
-    setUserHeight(next);
-    setEditorHeight(next);
-  };
-  const onHandlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    dragStartRef.current = null;
-    try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
-  };
-  const onHandleDoubleClick = () => setUserHeight(null);
 
   const send = () => {
     const t = text.trim();
@@ -281,19 +280,15 @@ export function Composer({
                 role="separator"
                 aria-orientation="horizontal"
                 aria-label="Resize editor"
-                title="Drag to resize · double-click to auto-fit"
+                title="Drag to resize"
                 onPointerDown={onHandlePointerDown}
-                onPointerMove={onHandlePointerMove}
-                onPointerUp={onHandlePointerUp}
-                onPointerCancel={onHandlePointerUp}
-                onDoubleClick={onHandleDoubleClick}
                 className="group mb-1 flex h-2.5 cursor-ns-resize items-center justify-center touch-none select-none"
               >
                 <div className="h-[3px] w-10 rounded-full bg-border transition-colors group-hover:bg-muted-foreground/60" />
               </div>
               <div
                 className="overflow-hidden rounded-lg border border-border bg-muted/40"
-                style={{ height: editorHeight, transition: dragStartRef.current ? "none" : "height 140ms ease-out" }}
+                style={{ height: editorHeight, transition: dragging ? "none" : "height 140ms ease-out" }}
               >
                 <Suspense
                   fallback={
