@@ -44,7 +44,6 @@ function ChatPage() {
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const composerWrapRef = useRef<HTMLDivElement>(null);
-  const [composerHeight, setComposerHeight] = useState(96);
 
   useEffect(() => {
     const u = store.getUser();
@@ -57,25 +56,19 @@ function ChatPage() {
     setMentor(store.getMentor());
   }, [navigate]);
 
-  // Track composer height so the scroll area always reserves the right space.
+  // Keep the bottom of the conversation visible while the in-flow composer grows.
   useEffect(() => {
     const el = composerWrapRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => {
-      setComposerHeight((prev) => {
-        const next = el.offsetHeight;
-        // If we were near the bottom, follow composer growth without smooth-scroll fighting resize/drag.
-        const sc = scrollRef.current;
-        if (sc) {
-          const distance = sc.scrollHeight - sc.scrollTop - sc.clientHeight;
-          if (next > prev && distance < 120) {
-            requestAnimationFrame(() => {
-              sc.scrollTo({ top: sc.scrollHeight, behavior: "auto" });
-            });
-          }
-        }
-        return next;
-      });
+      const sc = scrollRef.current;
+      if (!sc) return;
+      const distance = sc.scrollHeight - sc.scrollTop - sc.clientHeight;
+      if (distance < 180) {
+        requestAnimationFrame(() => {
+          sc.scrollTo({ top: sc.scrollHeight, behavior: "auto" });
+        });
+      }
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -150,23 +143,19 @@ function ChatPage() {
       <main className="relative z-10 mx-auto flex w-full min-h-0 max-w-[760px] flex-1 flex-col px-5 pt-10">
         <div
           ref={scrollRef}
-          className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto"
-          style={{ paddingBottom: composerHeight + 32 }}
+          className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto pb-5"
         >
           {msgs.map((m) => (
             <MessageRow key={m.id} msg={m} />
           ))}
         </div>
-      </main>
-
-      <div
-        ref={composerWrapRef}
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-5 pb-6 pt-6"
-      >
-        <div className="pointer-events-auto w-full max-w-[760px]">
+        <div
+          ref={composerWrapRef}
+          className="relative z-30 shrink-0 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+        >
           <Composer onSendText={sendUser} onSendCodeResult={sendCodeResult} sending={sending} />
         </div>
-      </div>
+      </main>
     </div>
   );
 }
