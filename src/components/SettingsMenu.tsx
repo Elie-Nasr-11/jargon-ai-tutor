@@ -1,48 +1,62 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import gsap from "gsap";
-import { Settings, User, LogOut } from "lucide-react";
+import { Settings, LogOut } from "lucide-react";
 import { GradientCard } from "./GradientCard";
 import { store } from "@/lib/jargon-store";
 
 export function SettingsMenu({ email }: { email: string }) {
-  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  const open = () => {
+    setMounted(true);
+    requestAnimationFrame(() => setVisible(true));
+  };
+  const close = () => setVisible(false);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!wrapRef.current?.contains(e.target as Node)) close();
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  const panelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (open && panelRef.current) {
+    if (!mounted || !panelRef.current) return;
+    if (visible) {
       gsap.fromTo(
         panelRef.current,
-        { y: -8, opacity: 0, scale: 0.985 },
-        { y: 0, opacity: 1, scale: 1, duration: 0.22, ease: "power3.out" },
+        { y: -8, opacity: 0, scale: 0.98 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.26, ease: "power3.out" },
       );
+    } else {
+      gsap.to(panelRef.current, {
+        y: -8,
+        opacity: 0,
+        scale: 0.98,
+        duration: 0.18,
+        ease: "power2.in",
+        onComplete: () => setMounted(false),
+      });
     }
-  }, [open]);
+  }, [visible, mounted]);
 
   return (
     <div ref={wrapRef} className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (visible ? close() : open())}
         aria-label="Settings"
         className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         <Settings className="h-[18px] w-[18px]" strokeWidth={1.5} />
       </button>
-      {open && (
-        <div
-          ref={panelRef}
-          className="absolute right-0 top-[calc(100%+10px)] w-[260px]"
-        >
+      {mounted && (
+        <div ref={panelRef} className="absolute right-0 top-[calc(100%+10px)] w-[260px]">
           <GradientCard>
             <div className="p-4">
               <div className="flex items-center gap-3 px-1 pb-3">
@@ -55,9 +69,6 @@ export function SettingsMenu({ email }: { email: string }) {
                 </div>
               </div>
               <div className="my-2 h-px bg-border" />
-              <button className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-[13px] text-foreground transition-colors hover:bg-muted">
-                <User className="h-[15px] w-[15px]" strokeWidth={1.5} /> Profile
-              </button>
               <button
                 onClick={() => {
                   store.clearUser();
