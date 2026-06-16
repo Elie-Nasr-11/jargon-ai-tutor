@@ -147,9 +147,9 @@ export function HeaderMenus({
         ref={panelRef}
         onMouseEnter={cancelClose}
         onMouseLeave={leave}
-        className="pointer-events-auto absolute left-1/2 top-[calc(100%+10px)] -translate-x-1/2 overflow-hidden"
+        className="pointer-events-auto absolute left-1/2 top-[calc(100%+10px)] -translate-x-1/2"
         style={{
-          width: contentKey ? WIDTHS[contentKey] : 360,
+          width: contentKey ? WIDTHS[contentKey] : 380,
           opacity: 0,
           willChange: "transform, opacity, width, height",
           transform: "translateZ(0)",
