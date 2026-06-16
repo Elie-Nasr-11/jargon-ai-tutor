@@ -1,27 +1,39 @@
-## Issues
-1. Toggle is only in the chat header — not present on `/login`.
-2. Light mode appears broken because `src/styles.css` has both `@media (prefers-color-scheme: dark) { :root { ... } }` AND `.dark { ... }`. When the OS is dark, the media query keeps overriding `:root` even after the user toggles light — `.dark` class is removed but dark tokens still apply. Result: toggling to light does nothing on dark-OS machines.
+## Goal
+Make the chat scroll feel smooth, and have the code-editor expansion (when the user opens `</>`) reserve real space in the chat column instead of overlapping the conversation the way the small text composer does.
+
+## Problem today
+- The composer is `position: fixed` at the viewport bottom, and the scroll area uses a hard-coded `pb-[200px]` to leave room for it.
+- When the composer morphs into the code editor (~220 px of Monaco + chrome + toolbar), it grows past that 200 px reserve and visually covers the last few messages.
+- Auto-scroll only fires when `msgs.length` changes, so growing the composer doesn't re-pin the latest message to the visible area.
+- Scroll jumps are instant; the user wants the whole interaction to feel smooth.
 
 ## Changes
 
-### `src/styles.css`
-- Delete the `@media (prefers-color-scheme: dark) { :root { ... } }` block entirely. The init script in `__root.tsx` already reads `prefers-color-scheme` and adds the `.dark` class when needed, so we don't need the media query — and removing it lets `.dark` (or its absence) be the single source of truth. The pure-white + rainbow light theme in `:root` then actually applies when toggled to light.
+### 1. `src/routes/chat.tsx` — dynamic bottom reserve + smooth scroll
+- Add a `composerWrapRef` around the fixed Composer container.
+- Track `composerHeight` with a `ResizeObserver` on that wrapper.
+- Apply `paddingBottom: composerHeight + 24` inline on the scroll area (replace `pb-[200px]`).
+- Replace the `useEffect` that only listens to `msgs.length`:
+  - Trigger smooth scroll-to-bottom on `msgs.length` changes as today.
+  - Also trigger it when `composerHeight` grows AND the user was already near the bottom (within ~80 px), so opening the code editor keeps the latest message in view instead of hiding it.
+- Use `scrollRef.current.scrollTo({ top, behavior: "smooth" })`; the existing call already does this, but it'll now be called on composer growth too.
 
-### `src/components/ThemeToggle.tsx`
-- Add an optional `floating` prop. When set, render the button as `position: fixed; bottom: 18px; left: 18px; z-index: 50;` with a subtle backdrop (surface bg, border, soft shadow) so it stays legible on any page. Keep the existing inline variant for the chat header.
+### 2. `src/components/Composer.tsx` — let the column own the height
+- The morph animation currently animates the wrapper from old height → new height and then sets `height: auto`. Keep this, but:
+  - Use a single `useLayoutEffect` keyed on `mode` AND on `lang` so switching JS/Py inside code mode doesn't desync.
+  - On mount of code panel, after Monaco reports ready, force one more height re-measure (Monaco's first paint changes panel height slightly, which currently causes the small jitter).
+  - Drop the `onComplete: height = "auto"` race by setting `auto` only after the next animation frame, so the ResizeObserver in `chat.tsx` reads the final size cleanly.
+- Bump the morph easing from `power3.inOut` 0.42 s to `power3.out` 0.36 s for a snappier feel that still reads as smooth.
 
-### `src/routes/__root.tsx`
-- Render `<ThemeToggle floating />` once inside `RootComponent` (alongside `<Outlet />`) so it appears on every route — login, chat, 404, error.
-
-### `src/routes/chat.tsx`
-- Remove the inline `<ThemeToggle />` from the chat header (the floating one replaces it). Keep the Appearance row inside `SettingsMenu`.
+### 3. `src/styles.css` — global scroll smoothness
+- Add `scroll-behavior: smooth;` to `.no-scrollbar` (scoped — we don't want it global because it can interfere with anchor jumps elsewhere).
 
 ## Out of scope
-- No color-token changes (the existing `:root` already holds the requested yellow/orange/pink/purple/blue palette on pure white).
-- No layout changes elsewhere.
+- No changes to the composer's visual styling, fixed positioning, or the existing fade-removed footer area.
+- No changes to message rendering or animations on individual messages.
+- No header/menus changes.
 
-## Files
-- `src/styles.css`
-- `src/components/ThemeToggle.tsx`
-- `src/routes/__root.tsx`
+## Files touched
 - `src/routes/chat.tsx`
+- `src/components/Composer.tsx`
+- `src/styles.css`
