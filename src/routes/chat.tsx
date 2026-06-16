@@ -99,7 +99,7 @@ function ChatPage() {
     <div className="relative flex min-h-screen flex-col" style={{ background: "var(--background)" }}>
       <AmbientCanvas intensity={0.35} />
 
-      <header className="sticky top-0 z-20 backdrop-blur-md" style={{ background: "rgba(250,250,249,0.72)" }}>
+      <header className="sticky top-0 z-20 backdrop-blur-md" style={{ background: "color-mix(in oklab, var(--background) 72%, transparent)" }}>
         <div className="hairline">
           <div className="mx-auto flex h-[60px] max-w-[1200px] items-center justify-between px-6">
             <div className="font-serif text-[22px] tracking-tight">Jargon</div>
@@ -175,11 +175,7 @@ function MessageRow({ msg }: { msg: Msg }) {
             {msg.ok ? "Output" : "Error"} \u00B7 {msg.lang === "python" ? "Python" : "JavaScript"}
           </div>
           <pre
-            className={`overflow-x-auto whitespace-pre-wrap rounded-xl border px-4 py-3 text-[12.5px] leading-relaxed ${
-              msg.ok
-                ? "border-border bg-muted/60 text-foreground"
-                : "border-rose-200 bg-rose-50 text-rose-700"
-            }`}
+            className="overflow-x-auto whitespace-pre-wrap rounded-xl border border-border bg-muted/60 px-4 py-3 text-[12.5px] leading-relaxed text-foreground"
             style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
           >
             {msg.output}

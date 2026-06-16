@@ -115,9 +115,6 @@ function LoginPage() {
               >
                 Continue
               </button>
-              <p className="text-center text-[12px] text-muted-foreground">
-                Sketch build \u2014 any credentials get you in.
-              </p>
             </form>
           </GradientCard>
         </div>
