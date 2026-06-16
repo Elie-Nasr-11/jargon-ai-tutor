@@ -120,16 +120,22 @@ function ChatPage() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto flex w-full min-h-0 max-w-[760px] flex-1 flex-col px-5 pb-6 pt-10">
-        <div ref={scrollRef} className="min-h-0 flex-1 space-y-5 overflow-y-auto pb-6">
+      <main className="relative z-10 mx-auto flex w-full min-h-0 max-w-[760px] flex-1 flex-col px-5 pt-10">
+        <div ref={scrollRef} className="min-h-0 flex-1 space-y-5 overflow-y-auto pb-[200px]">
           {msgs.map((m) => (
             <MessageRow key={m.id} msg={m} />
           ))}
         </div>
-        <div className="shrink-0 pt-2">
+      </main>
+
+      <div
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-5 pb-6 pt-6"
+        style={{ background: "linear-gradient(to top, var(--background) 60%, transparent)" }}
+      >
+        <div className="pointer-events-auto w-full max-w-[760px]">
           <Composer onSendText={sendUser} onSendCodeResult={sendCodeResult} sending={sending} />
         </div>
-      </main>
+      </div>
     </div>
   );
 }
