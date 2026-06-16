@@ -64,13 +64,13 @@ function ChatPage() {
     const ro = new ResizeObserver(() => {
       setComposerHeight((prev) => {
         const next = el.offsetHeight;
-        // If we were near the bottom, follow the growth smoothly.
+        // If we were near the bottom, follow composer growth without smooth-scroll fighting resize/drag.
         const sc = scrollRef.current;
         if (sc) {
           const distance = sc.scrollHeight - sc.scrollTop - sc.clientHeight;
           if (next > prev && distance < 120) {
             requestAnimationFrame(() => {
-              sc.scrollTo({ top: sc.scrollHeight, behavior: "smooth" });
+              sc.scrollTo({ top: sc.scrollHeight, behavior: "auto" });
             });
           }
         }
@@ -151,7 +151,7 @@ function ChatPage() {
         <div
           ref={scrollRef}
           className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto"
-          style={{ paddingBottom: composerHeight + 16 }}
+          style={{ paddingBottom: composerHeight + 32 }}
         >
           {msgs.map((m) => (
             <MessageRow key={m.id} msg={m} />
