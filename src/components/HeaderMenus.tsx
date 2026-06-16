@@ -266,11 +266,7 @@ function ProgressPanel({ activeId }: { activeId: string }) {
       <div className="mt-4 h-[5px] w-full overflow-hidden rounded-full bg-muted">
         <div
           ref={barRef}
-          className="h-full rounded-full"
-          style={{
-            background:
-              "linear-gradient(90deg, var(--grad-1), var(--grad-2), var(--grad-3), var(--grad-4), var(--grad-5))",
-          }}
+          className="h-full rounded-full bg-foreground"
         />
       </div>
       <div className="mt-1 flex justify-between text-[11.5px] text-muted-foreground">
