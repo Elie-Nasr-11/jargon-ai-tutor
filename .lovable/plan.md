@@ -1,53 +1,40 @@
-## Changes
+## Goal
+Fix the jittery/laggy header menu and add a light/dark mode toggle.
 
-### 1. Color system — pure white + rainbow-only palette (light + dark)
-Rewrite `src/styles.css` so the chrome stays neutral and the only color is the rainbow gradient (yellow → orange → pink → purple → blue).
+## 1. Header menu — eliminate the lag/jitter
 
-- `:root` (light): `--background: #ffffff`, `--surface: #f6f6fb`, `--surface-hover: #f9f9fe`, ink `rgba(10,10,10,0.92)`, emphasis `#0a0a0a`. Text opacity ladder via tokens: `--ink-92/62/45/30/16`.
-- `.dark`: `--background: #0b0b0d`, `--surface: #161619`, `--surface-hover: #1f1f23`, ink `rgba(245,245,247,0.92)`, emphasis `#f0f0f2`. Wire via `@custom-variant dark` + `@theme inline`.
-- Rainbow tokens (used by `.grad-border`, `.grad-text`, progress bar, focus rings, toasts):
-  - `--grad-1: #f6d36b` yellow
-  - `--grad-2: #f9a86b` orange
-  - `--grad-3: #f585bb` pink
-  - `--grad-4: #8fa4ef` periwinkle/purple
-  - `--grad-5: #72b8f5` blue
-  Update the `.grad-border` and `.grad-text` linear-gradients to use all five stops at 0/25/50/75/100%.
-- Replace any rose/red error styling in `chat.tsx` output block with neutral surface + pink-from-gradient accent so we stay inside the allowed palette.
-- Remove the `bg-stone/neutral` Tailwind reliance — components already use `bg-muted`, `bg-foreground`, `bg-background` semantic tokens, which now resolve to the new values.
-- Add a `<html class="dark">` toggle hook is out of scope; we expose the dark tokens so the system-preference media query (`@media (prefers-color-scheme: dark)`) flips them automatically. (No new UI toggle unless you want one.)
+Current issues:
+- Switching tabs unmounts the panel, waits 160ms via `setTimeout`, then remounts and re-runs the entrance tween → visible flicker + dropped frames.
+- `width` is computed per `mountedKey` so the panel jumps size between tabs instead of morphing.
+- Indicators (lessons bar, mentor pill) start at `width:0`/`height:24` and only animate after `useLayoutEffect`, so the first open shows the indicator collapsed for a frame.
+- Hover hand-off between trigger and panel relies on overlapping mouse events + a `setTimeout(140)` close, which races and causes the panel to flicker closed.
 
-### 2. Smoother open/close + selection animations
-Replace abrupt mounts with GSAP timelines that animate both in and out, plus `FLIP`-style cross-fades for selections.
+Refactor `src/components/HeaderMenus.tsx`:
+- Keep the panel **mounted as long as any tab is hovered**; switch content via a single `activeKey` state. No unmount between tab hops.
+- Drive open/close with one GSAP timeline stored in a ref (`tl.current`): `tl.play()` on enter, `tl.reverse()` on leave. Kill on unmount. This removes the setTimeout chain entirely.
+- Animate **width + height** of the panel container with GSAP when `activeKey` changes (measure the inner content with a hidden sizer or `getBoundingClientRect`, then `gsap.to({ width, height, duration: 0.32, ease: "power3.out" })`). Crossfade the inner content (`opacity`/`y: 4`) on key change.
+- Single shared close timer; `onMouseEnter` on both nav and panel cancels it. Close delay reduced to ~90ms.
+- Add `will-change: transform, opacity` + `transform: translateZ(0)` on the panel and indicators to keep them on their own GPU layer.
+- `LessonsPanel` indicator: set initial `y`/`height` synchronously with `gsap.set` before paint (already `useLayoutEffect`, but currently uses `gsap.to` from the CSS default — switch to `gsap.set` on first run, `gsap.to` on subsequent updates via a `didMount` ref).
+- `MentorPanel` pill: same pattern — `gsap.set` on first paint so it never flashes at `width:0`.
 
-- **Composer (open/close code window & language switch)** — `src/components/Composer.tsx`:
-  - Track `mode` change with an exit animation: animate current panel's `height`, `opacity`, `y` to 0 before swapping to the next; use a single `wrapRef` with `gsap.timeline` (`power3.inOut`, ~0.35s) and `overflow: hidden` measurement.
-  - Language toggle (JS ↔ Py): animate the active pill with GSAP `Flip` (or a sliding `::before` indicator) — the pill background slides between the two segments in ~0.25s instead of an instant class swap. Crossfade the helper text below.
-- **Lessons menu (`HeaderMenus.tsx > LessonsPanel`)**:
-  - Replace the static black `.dot-indicator.active` with a single absolutely-positioned indicator `<div>` that GSAP animates to the selected row's `y`/`height` on click (~0.3s `power3.out`). Selected text color fades via GSAP.
-- **Mentor menu (`MentorPanel`)**:
-  - For each option group, render a single absolutely-positioned pill background and slide it (`gsap.to` `x`/`width`) to the chosen option on click; foreground text color crossfades. No layout jump.
-- **Menu panels open/close**: extend the existing `MenuPanel` to also play a reverse tween on unmount via a small `AnimatePresence`-style helper (local `useExitAnimation` hook around `gsap.to(..., {onComplete: setNull})`) so panels fade out instead of disappearing instantly. Same treatment for `SettingsMenu` dropdown.
+Net effect: tabs slide between each other, panel resizes smoothly, no remount, no flicker.
 
-### 3. Settings menu — remove Profile
-In `src/components/SettingsMenu.tsx`, delete the "Profile" button and the `User` import. Keep "Signed in" header and "Log out".
+## 2. Light/dark mode toggle
 
-### 4. Login landing — trim the card
-In `src/routes/login.tsx`:
-- Keep the eyebrow pill (`Jargon AI tutor`), the `h1` headline, and the subtitle paragraph above the card.
-- Inside the card: keep Email, Password, Continue button.
-- Remove the helper text: `"Sketch build — any credentials get you in."`
+- New `src/lib/theme.ts`: tiny `useTheme()` hook. Reads `localStorage.jargon-theme` (`"light" | "dark" | "system"`, default `"system"`), applies `.dark` class to `document.documentElement`, listens to `prefers-color-scheme` while in system mode. Exposes `{ theme, resolved, setTheme, toggle }`.
+- Apply theme synchronously on first client render (small `<script>` injected via `__root.tsx` `head().scripts` to avoid FOUC, reading the same localStorage key).
+- Add a Sun/Moon icon button in the chat header next to `SettingsMenu` (in `src/routes/chat.tsx`), same 36×36 ghost-button styling. Click toggles light/dark. `aria-label` reflects current state. Subtle GSAP rotate/scale on icon swap.
+- Also expose the toggle inside `SettingsMenu` as a third row ("Appearance · Light/Dark") with the same handler, so it's discoverable.
+- `AmbientCanvas` already reads CSS vars indirectly — verify backdrop reads `--background`; no shader change needed since palette is theme-agnostic over white/near-black.
 
-### 5. Ambient + accents stay on-palette
-- `AmbientCanvas` shader colors: re-map to the 5 rainbow stops so the background glow uses only yellow/orange/pink/purple/blue (very low alpha over white / over `#0b0b0d`).
+## Out of scope
+- No bot/logic changes, no new routes, no backend.
+- Login page styling untouched aside from inheriting theme tokens it already uses.
 
-### Out of scope
-No dark-mode UI toggle button, no backend changes, no new routes, no message/bot logic changes.
-
-### Files touched
-- `src/styles.css` (rewrite tokens + gradient)
-- `src/components/Composer.tsx` (animated open/close + animated lang pill)
-- `src/components/HeaderMenus.tsx` (animated lesson dot + mentor pill, exit animations)
-- `src/components/SettingsMenu.tsx` (remove Profile, exit animation)
-- `src/components/AmbientCanvas.tsx` (palette swap)
-- `src/routes/login.tsx` (remove helper line)
-- `src/routes/chat.tsx` (output error styling → neutral)
+## Files touched
+- `src/components/HeaderMenus.tsx` (rewrite menu state machine + indicators)
+- `src/components/SettingsMenu.tsx` (add appearance row)
+- `src/routes/chat.tsx` (theme toggle button in header)
+- `src/routes/__root.tsx` (FOUC-prevention inline script)
+- `src/lib/theme.ts` (new)
