@@ -121,20 +121,9 @@ export function Composer({
     monaco.editor.setTheme(isDark ? JARGON_DARK_THEME : JARGON_LIGHT_THEME);
   };
 
-  const handleMonacoMount = (
-    editor: { onDidContentSizeChange: (cb: () => void) => void; getContentHeight: () => number },
-    monaco: typeof import("monaco-editor"),
-  ) => {
+  const handleMonacoMount = (_editor: unknown, monaco: typeof import("monaco-editor")) => {
     monacoRef.current = monaco;
-    editorInstanceRef.current = editor;
     applyMonacoTheme(monaco);
-    const sync = () => {
-      const ch = editor.getContentHeight();
-      if (userHeight != null) return; // user override wins
-      setEditorHeight(Math.max(MIN_EDITOR_H, Math.min(ch + 16, maxEditorH)));
-    };
-    editor.onDidContentSizeChange(sync);
-    sync();
   };
 
   useEffect(() => {
@@ -169,25 +158,36 @@ export function Composer({
     );
   }, [mode]);
 
-  // Drag handle for manual resize
-  const dragStartRef = useRef<{ y: number; h: number } | null>(null);
+  // Stable manual resize: window-level listeners keep drag smooth outside the handle.
+  useEffect(() => {
+    if (!dragging) return;
+
+    const onMove = (e: PointerEvent) => {
+      const start = dragStartRef.current;
+      if (!start) return;
+      setEditorHeight(clampEditorHeight(start.h + start.y - e.clientY));
+    };
+
+    const onUp = () => {
+      dragStartRef.current = null;
+      setDragging(false);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [dragging, maxEditorH]);
+
   const onHandlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     dragStartRef.current = { y: e.clientY, h: editorHeight };
+    setDragging(true);
   };
-  const onHandlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragStartRef.current) return;
-    const delta = dragStartRef.current.y - e.clientY; // drag up grows
-    const next = Math.max(MIN_EDITOR_H, Math.min(dragStartRef.current.h + delta, maxEditorH));
-    setUserHeight(next);
-    setEditorHeight(next);
-  };
-  const onHandlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    dragStartRef.current = null;
-    try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
-  };
-  const onHandleDoubleClick = () => setUserHeight(null);
 
   const send = () => {
     const t = text.trim();
